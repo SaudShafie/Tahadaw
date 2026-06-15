@@ -4,6 +4,12 @@
 # --- Database (local) ---
 spring.datasource.password=
 
+# --- Dev seed data (pick ONE file for your part — start app once first so tables exist) ---
+# spring.sql.init.mode=always
+# Part 1 (Dev A): spring.sql.init.data-locations=classpath:seed-part1.sql
+# Part 2 (Dev B): spring.sql.init.data-locations=classpath:seed-part2.sql
+# Part 3 (Dev C): spring.sql.init.data-locations=classpath:seed-part3.sql
+
 # --- Schema (optional) ---
 # spring.jpa.hibernate.ddl-auto=create-drop
 
