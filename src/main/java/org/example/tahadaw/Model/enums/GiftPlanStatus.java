@@ -1,0 +1,12 @@
+package org.example.tahadaw.Model.enums;
+
+public enum GiftPlanStatus {
+    CREATED,
+    REQUIRED_QUESTIONS_ANSWERED,
+    AI_QUESTIONS_GENERATED,
+    AI_QUESTIONS_ANSWERED,
+    RECOMMENDATIONS_GENERATED,
+    GIFT_IDEA_SELECTED,
+    PRODUCT_SELECTED,
+    COMPLETED
+}

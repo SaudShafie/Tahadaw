@@ -1,0 +1,33 @@
+# Copy this file to application-local.properties (same folder).
+# application-local.properties is gitignored — use it for secrets and API keys.
+
+# --- Database (local) ---
+spring.datasource.password=
+
+# --- Schema (optional) ---
+# spring.jpa.hibernate.ddl-auto=create-drop
+
+# --- AI (required for AiService.ask) ---
+# openai.api.key=sk-your-key-here
+
+# --- Email (required for gift cards, receipts, and reminders) ---
+# spring.mail.host=smtp.gmail.com
+# spring.mail.port=587
+# spring.mail.username=your-email@gmail.com
+# spring.mail.password=your-app-password
+# spring.mail.properties.mail.smtp.auth=true
+# spring.mail.properties.mail.smtp.starttls.enable=true
+
+# --- Twilio WhatsApp (required for WhatsApp reminders) ---
+# twilio.account-sid=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# twilio.auth-token=your-auth-token
+# twilio.whatsapp-from=whatsapp:+14155238886
+# logging.level.org.example.tahadaw.Service.WhatsAppService=INFO
+
+# --- SearchAPI.io (required for product search after gift idea selection) ---
+# searchapi.api.key=your-searchapi-key
+
+# --- Moyasar test/sandbox (mock card payments — use sk_test_ key, not live) ---
+# Same pattern as Project_3: real Moyasar sandbox API with test card numbers.
+# Test card: 4111 1111 1111 1111, any future expiry, any CVC.
+# moyasar.api.key=sk_test_d9Ui6jJBik6T9hvgXwKZXJFDXA4TfK2V94Bifxvg
