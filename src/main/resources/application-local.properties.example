@@ -15,6 +15,10 @@ spring.datasource.password=
 
 # --- AI (required for AiService.ask) ---
 # openai.api.key=sk-your-key-here
+# Optional AI tuning (defaults shown):
+# ai.model=gpt-4o-mini
+# ai.base-url=https://api.openai.com/v1
+# ai.max-tokens=1000
 
 # --- Email (required for gift cards, receipts, and reminders) ---
 # spring.mail.host=smtp.gmail.com

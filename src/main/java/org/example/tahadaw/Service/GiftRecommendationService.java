@@ -35,7 +35,7 @@ public class GiftRecommendationService {
         }
 
         giftPlan.setSelectedGiftIdea(recommendation);
-        if (giftPlan.getStatus() == "RECOMMENDATIONS_GENERATED") {
+        if ("RECOMMENDATIONS_GENERATED".equals(giftPlan.getStatus())) {
             giftPlan.setStatus("GIFT_IDEA_SELECTED");
         }
         giftPlan.setUpdatedAt(LocalDateTime.now());

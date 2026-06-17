@@ -9,6 +9,9 @@ import org.springframework.web.client.RestClientResponseException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+
 /**
  * Low-level Moyasar sandbox client.
  * Uses the same mock/test flow as Project_3: real Moyasar test API with test card numbers.
@@ -42,20 +45,16 @@ public class MoyasarService {
                 ? callbackUrl
                 : "http://localhost:8080/api/v1/payments/webhook/moyasar";
 
-        String requestBody = String.format(
-                "source[type]=card&source[name]=%s&source[number]=%s&source[cvc]=%s" +
-                        "&source[month]=%s&source[year]=%s&amount=%d&currency=%s" +
-                        "&description=%s&callback_url=%s",
-                name,
-                number,
-                cvc,
-                month,
-                year,
-                amountMinor,
-                currency,
-                description,
-                resolvedCallback
-        );
+        String requestBody = "source[type]=card"
+                + "&source[name]=" + encode(name)
+                + "&source[number]=" + encode(number)
+                + "&source[cvc]=" + encode(cvc)
+                + "&source[month]=" + encode(month)
+                + "&source[year]=" + encode(year)
+                + "&amount=" + amountMinor
+                + "&currency=" + encode(currency)
+                + "&description=" + encode(description)
+                + "&callback_url=" + encode(resolvedCallback);
 
         try {
             RestClient client = RestClient.builder()
@@ -105,6 +104,10 @@ public class MoyasarService {
         } catch (Exception ex) {
             throw new ApiException("Moyasar status request failed: " + ex.getMessage());
         }
+    }
+
+    private static String encode(String value) {
+        return value == null ? "" : URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
     public static String readStatus(JsonNode response) {

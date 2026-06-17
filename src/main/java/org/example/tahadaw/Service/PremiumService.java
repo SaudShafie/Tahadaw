@@ -2,7 +2,7 @@ package org.example.tahadaw.Service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.tahadaw.Api.ApiException;
-import org.example.tahadaw.DTO.IN.MoyasarCardPaymentDTOIn;
+import org.example.tahadaw.Api.PremiumRequiredException;
 import org.example.tahadaw.DTO.OUT.PremiumStatusDTOOut;
 import org.example.tahadaw.Model.Payment;
 import org.example.tahadaw.Model.PremiumAccess;
@@ -36,7 +36,7 @@ public class PremiumService {
 
     public void requirePremium(User user) {
         if (!Boolean.TRUE.equals(user.getIsPremium())) {
-            throw new ApiException("Premium access is required for this feature.");
+            throw new PremiumRequiredException("Premium access is required for this feature.");
         }
     }
 

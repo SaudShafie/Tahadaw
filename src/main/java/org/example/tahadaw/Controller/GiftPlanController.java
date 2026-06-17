@@ -7,6 +7,7 @@ import org.example.tahadaw.DTO.IN.GiftPlanDTOIn;
 import org.example.tahadaw.DTO.IN.ProductSelectDTOIn;
 import org.example.tahadaw.DTO.IN.AiQuestionAnswersSubmitDTOIn;
 import org.example.tahadaw.DTO.IN.RequiredQuestionAnswersSubmitDTOIn;
+import org.example.tahadaw.DTO.IN.SurprisePlanGenerateDTOIn;
 import org.example.tahadaw.DTO.OUT.AiGeneratedQuestionDTOOut;
 import org.example.tahadaw.DTO.OUT.AiQuestionAnswerDTOOut;
 import org.example.tahadaw.DTO.OUT.GiftHistoryDTOOut;
@@ -15,12 +16,14 @@ import org.example.tahadaw.DTO.OUT.ProductSearchResultDTOOut;
 import org.example.tahadaw.DTO.OUT.RequiredQuestionAnswerDTOOut;
 import org.example.tahadaw.DTO.OUT.RequiredQuestionDTOOut;
 import org.example.tahadaw.DTO.OUT.SelectedProductDTOOut;
+import org.example.tahadaw.DTO.OUT.SurprisePlanDTOOut;
 import org.example.tahadaw.Model.GiftPlan;
 import org.example.tahadaw.Service.GiftHistoryService;
 import org.example.tahadaw.Service.GiftMessageService;
 import org.example.tahadaw.Service.AiQuestionService;
 import org.example.tahadaw.Service.GiftPlanService;
 import org.example.tahadaw.Service.ProductSearchService;
+import org.example.tahadaw.Service.SurprisePlanService;
 import org.example.tahadaw.Service.RequiredQuestionAnswerService;
 import org.example.tahadaw.Service.RequiredQuestionService;
 import org.springframework.http.ResponseEntity;
@@ -40,6 +43,7 @@ public class GiftPlanController {
     private final ProductSearchService productSearchService;
     private final GiftMessageService giftMessageService;
     private final GiftHistoryService giftHistoryService;
+    private final SurprisePlanService surprisePlanService;
 
     @PostMapping
     public ResponseEntity<GiftPlan> create(@RequestParam Long userId,
@@ -152,5 +156,19 @@ public class GiftPlanController {
     public ResponseEntity<GiftHistoryDTOOut> saveHistoryFromPlan(@RequestParam Long userId,
                                                                  @PathVariable Long giftPlanId) {
         return ResponseEntity.ok(giftHistoryService.saveFromPlan(userId, giftPlanId));
+    }
+
+    @PostMapping("/{giftPlanId}/surprise-plan/generate")
+    public ResponseEntity<SurprisePlanDTOOut> generateSurprisePlan(
+            @RequestParam Long userId,
+            @PathVariable Long giftPlanId,
+            @RequestBody(required = false) SurprisePlanGenerateDTOIn request) {
+        return ResponseEntity.ok(surprisePlanService.generate(userId, giftPlanId, request));
+    }
+
+    @GetMapping("/{giftPlanId}/surprise-plan")
+    public ResponseEntity<SurprisePlanDTOOut> getSurprisePlan(@RequestParam Long userId,
+                                                              @PathVariable Long giftPlanId) {
+        return ResponseEntity.ok(surprisePlanService.getByGiftPlan(userId, giftPlanId));
     }
 }

@@ -3,6 +3,7 @@ package org.example.tahadaw.ControllerAdvise;
 import org.example.tahadaw.AI.AiException;
 import org.example.tahadaw.Api.ApiException;
 import org.example.tahadaw.Api.ApiResponse;
+import org.example.tahadaw.Api.PremiumRequiredException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
@@ -35,6 +36,11 @@ public class ControllerAdvisor {
     @ExceptionHandler(value = ApiException.class)
     public ResponseEntity<?> handleAPIException(ApiException ex) {
         return ResponseEntity.status(400).body(new ApiResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(PremiumRequiredException.class)
+    public ResponseEntity<?> handlePremiumRequiredException(PremiumRequiredException ex) {
+        return ResponseEntity.status(403).body(new ApiResponse(ex.getMessage()));
     }
 
     @ExceptionHandler(AiException.class)

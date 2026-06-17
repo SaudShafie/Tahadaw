@@ -202,7 +202,7 @@ public class GiftHistoryService {
             return;
         }
         GiftPlan giftPlan = history.getGiftIdeaRecommendation().getGiftPlan();
-        if (giftPlan.getStatus() != "COMPLETED") {
+        if (!"COMPLETED".equals(giftPlan.getStatus())) {
             giftPlan.setStatus("COMPLETED");
             giftPlan.setUpdatedAt(LocalDateTime.now());
             giftPlanRepository.save(giftPlan);

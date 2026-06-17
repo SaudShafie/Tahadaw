@@ -31,6 +31,9 @@ public class AiService {
     @Value("${ai.base-url:https://api.openai.com/v1}")
     private String baseUrl;
 
+    @Value("${ai.max-tokens:1000}")
+    private int maxTokens;
+
     /**
      * Sends a prompt to the chat API and returns a JSON string.
      *
@@ -51,6 +54,7 @@ public class AiService {
         ));
         body.put("response_format", Map.of("type", "json_object"));
         body.put("temperature", 0);
+        body.put("max_tokens", maxTokens);
 
         try {
             RestClient client = RestClient.builder()
