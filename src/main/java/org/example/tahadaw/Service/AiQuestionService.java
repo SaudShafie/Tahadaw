@@ -86,7 +86,7 @@ public class AiQuestionService {
     public List<AiGeneratedQuestionDTOOut> generateQuestions(Long userId, Long giftPlanId) {
         GiftPlan giftPlan = requireOwnedGiftPlan(userId, giftPlanId);
 
-        if (giftPlan.getStatus() != "REQUIRED_QUESTIONS_ANSWERED") {
+        if (!"REQUIRED_QUESTIONS_ANSWERED".equals(giftPlan.getStatus())) {
             throw new ApiException("Answer all required questions before generating AI follow-up questions.");
         }
         if (aiGeneratedQuestionRepository.existsByGiftPlan_Id(giftPlanId)) {
@@ -131,7 +131,7 @@ public class AiQuestionService {
                                                     AiQuestionAnswersSubmitDTOIn request) {
         GiftPlan giftPlan = requireOwnedGiftPlan(userId, giftPlanId);
 
-        if (giftPlan.getStatus() != "AI_QUESTIONS_GENERATED") {
+        if (!"AI_QUESTIONS_GENERATED".equals(giftPlan.getStatus())) {
             throw new ApiException("Generate AI follow-up questions before submitting answers.");
         }
 

@@ -32,7 +32,7 @@ public class RequiredQuestionAnswerService {
                                                             RequiredQuestionAnswersSubmitDTOIn request) {
         GiftPlan giftPlan = requireOwnedGiftPlan(userId, giftPlanId);
 
-        if (giftPlan.getStatus() != "CREATED") {
+        if (!"CREATED".equals(giftPlan.getStatus())) {
             throw new ApiException("Required answers can only be submitted while the gift plan is in CREATED status.");
         }
 

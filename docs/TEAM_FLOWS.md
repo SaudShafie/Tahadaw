@@ -570,7 +570,7 @@ Gift Plan → Required Q → AI Q → AI Ideas → Product Search
 }
 ```
 
-**Services:** `PaymentService`, `MoyasarService`, `PremiumService` · **Status:** 🟢 Partially implemented
+**Services:** `PaymentService`, `MoyasarService`, `PremiumService` · **Status:** 🟢 Implemented (Moyasar sandbox / test card — no real charge)
 
 ---
 
@@ -585,9 +585,17 @@ Gift Plan → Required Q → AI Q → AI Ideas → Product Search
 | `POST` | `/api/v1/gift-plans/{giftPlanId}/surprise-plan/generate?userId=` | Generate |
 | `GET` | `/api/v1/gift-plans/{giftPlanId}/surprise-plan?userId=` | Get plan |
 
+**Generate body (optional):**
+```json
+{
+  "language": "ar"
+}
+```
+If `language` is omitted, falls back to the gift plan's language, then `en`.
+
 **Block with 403 if not premium.**
 
-**Services:** `SurprisePlanService`, `PremiumService`, `AiService` · **Status:** 🔴 Not implemented
+**Services:** `SurprisePlanService`, `PremiumService`, `AiService` · **Status:** 🟢 Implemented (premium-gated, 403 if not premium)
 
 ---
 

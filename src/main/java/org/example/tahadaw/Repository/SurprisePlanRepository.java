@@ -8,4 +8,6 @@ import java.util.Optional;
 public interface SurprisePlanRepository extends JpaRepository<SurprisePlan, Long> {
 
     Optional<SurprisePlan> findSurprisePlanById(Long id);
+
+    Optional<SurprisePlan> findByGiftPlan_Id(Long giftPlanId);
 }
