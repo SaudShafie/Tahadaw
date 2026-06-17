@@ -2,7 +2,6 @@ package org.example.tahadaw.DTO.OUT;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import org.example.tahadaw.Model.enums.GroupGiftStatus;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -21,6 +20,6 @@ public class GroupGiftDTOOut {
     private LocalDate giftGivingDate;
     private LocalDateTime votingDeadline;
     private Long winningOptionId;
-    private GroupGiftStatus status;
+    private String status;
     private LocalDateTime createdAt;
 }

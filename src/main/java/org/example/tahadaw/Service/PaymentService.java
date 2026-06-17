@@ -7,8 +7,6 @@ import org.example.tahadaw.DTO.IN.MoyasarWebhookDTOIn;
 import org.example.tahadaw.DTO.OUT.PaymentDTOOut;
 import org.example.tahadaw.Model.Payment;
 import org.example.tahadaw.Model.User;
-import org.example.tahadaw.Model.enums.PaymentStatus;
-import org.example.tahadaw.Model.enums.PaymentType;
 import org.example.tahadaw.Repository.PaymentRepository;
 import org.example.tahadaw.Repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -53,8 +51,8 @@ public class PaymentService {
         payment.setUser(user);
         payment.setAmountMinor(premiumAmountMinor);
         payment.setCurrency(premiumCurrency);
-        payment.setPaymentType(PaymentType.PREMIUM);
-        payment.setStatus(PaymentStatus.PENDING);
+        payment.setPaymentType("PREMIUM");
+        payment.setStatus("PENDING");
         payment.setProvider(PROVIDER);
         payment.setCreatedAt(LocalDateTime.now());
         payment = paymentRepository.save(payment);
@@ -117,9 +115,9 @@ public class PaymentService {
                 // Email is optional during local development.
             }
         } else if ("failed".equalsIgnoreCase(moyasarStatus)) {
-            payment.setStatus(PaymentStatus.FAILED);
+            payment.setStatus("FAILED");
         } else {
-            payment.setStatus(PaymentStatus.PENDING);
+            payment.setStatus("PENDING");
         }
 
         paymentRepository.save(payment);

@@ -5,7 +5,6 @@ import org.example.tahadaw.Api.ApiException;
 import org.example.tahadaw.Model.Recipient;
 import org.example.tahadaw.Model.Reminder;
 import org.example.tahadaw.Model.User;
-import org.example.tahadaw.Model.enums.ReminderStatus;
 import org.example.tahadaw.Repository.RecipientRepository;
 import org.example.tahadaw.Repository.ReminderRepository;
 import org.example.tahadaw.Repository.UserRepository;
@@ -42,7 +41,7 @@ public class ReminderService {
 
         reminder.setUser(user);
         reminder.setRecipient(recipient);
-        reminder.setStatus(ReminderStatus.PENDING);
+        reminder.setStatus("PENDING");
         reminder.setCreatedAt(LocalDateTime.now());
 
         reminderRepository.save(reminder);

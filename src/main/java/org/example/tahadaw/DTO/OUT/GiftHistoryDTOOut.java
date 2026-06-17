@@ -2,7 +2,6 @@ package org.example.tahadaw.DTO.OUT;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import org.example.tahadaw.Model.enums.OccasionType;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -16,7 +15,7 @@ public class GiftHistoryDTOOut {
     private Long recipientId;
     private Long giftIdeaRecommendationId;
     private String giftName;
-    private OccasionType occasionType;
+    private String occasionType;
     private LocalDate giftDate;
     private Long priceMinor;
     private Boolean wasGifted;

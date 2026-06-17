@@ -6,7 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.tahadaw.Model.enums.OccasionType;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -38,9 +37,8 @@ public class GiftHistory {
     @Column(columnDefinition = "varchar(200) not null")
     private String giftName;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(30)")
-    private OccasionType occasionType;
+        @Column(columnDefinition = "varchar(30)")
+    private String occasionType;
 
     @Column(columnDefinition = "date")
     private LocalDate giftDate;

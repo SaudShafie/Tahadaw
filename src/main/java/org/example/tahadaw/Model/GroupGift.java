@@ -6,7 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.tahadaw.Model.enums.GroupGiftStatus;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -54,9 +53,8 @@ public class GroupGift {
     @JoinColumn(name = "winning_option_id")
     private GroupGiftOption winningOption;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(20) not null")
-    private GroupGiftStatus status;
+        @Column(columnDefinition = "varchar(20) not null")
+    private String status;
 
     @Column(updatable = false, columnDefinition = "datetime not null")
     private LocalDateTime createdAt;

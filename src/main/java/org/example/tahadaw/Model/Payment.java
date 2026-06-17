@@ -6,8 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.tahadaw.Model.enums.PaymentStatus;
-import org.example.tahadaw.Model.enums.PaymentType;
 
 import java.time.LocalDateTime;
 
@@ -33,13 +31,11 @@ public class Payment {
     @Column(columnDefinition = "varchar(3) not null")
     private String currency;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(20) not null")
-    private PaymentType paymentType;
+        @Column(columnDefinition = "varchar(20) not null")
+    private String paymentType;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(20) not null")
-    private PaymentStatus status;
+        @Column(columnDefinition = "varchar(20) not null")
+    private String status;
 
     @Column(columnDefinition = "varchar(50)")
     private String provider;

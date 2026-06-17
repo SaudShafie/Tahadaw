@@ -4,8 +4,6 @@ import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.example.tahadaw.Model.enums.GiftStyle;
-import org.example.tahadaw.Model.enums.OccasionType;
 
 import java.time.LocalDate;
 
@@ -15,7 +13,7 @@ import java.time.LocalDate;
 public class GiftPlanDTOIn {
 
     @NotNull
-    private OccasionType occasionType;
+    private String occasionType;
 
     @NotNull
     @FutureOrPresent
@@ -29,7 +27,7 @@ public class GiftPlanDTOIn {
     @Size(min = 3, max = 3)
     private String currency;
 
-    private GiftStyle preferredGiftStyle;
+    private String preferredGiftStyle;
 
     @Size(max = 10)
     private String language;

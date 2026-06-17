@@ -62,8 +62,6 @@ public class Recipient {
     @Column(columnDefinition = "text")
     private String notes;
 
-    @Column(columnDefinition = "boolean not null")
-    private Boolean consentAcknowledged;
 
     @Column(updatable = false, columnDefinition = "datetime not null")
     private LocalDateTime createdAt;

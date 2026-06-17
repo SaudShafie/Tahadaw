@@ -6,8 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.tahadaw.Model.enums.NotificationStatus;
-import org.example.tahadaw.Model.enums.NotificationType;
 
 import java.time.LocalDateTime;
 
@@ -33,13 +31,11 @@ public class Notification {
     @Column(columnDefinition = "text not null")
     private String message;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(40) not null")
-    private NotificationType type;
+        @Column(columnDefinition = "varchar(40) not null")
+    private String type;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(10) not null")
-    private NotificationStatus status;
+        @Column(columnDefinition = "varchar(10) not null")
+    private String status;
 
     @Column(updatable = false, columnDefinition = "datetime not null")
     private LocalDateTime createdAt;

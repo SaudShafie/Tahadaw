@@ -14,7 +14,6 @@ import org.example.tahadaw.Model.AiQuestionAnswer;
 import org.example.tahadaw.Model.GiftPlan;
 import org.example.tahadaw.Model.Recipient;
 import org.example.tahadaw.Model.RequiredQuestionAnswer;
-import org.example.tahadaw.Model.enums.GiftPlanStatus;
 import org.example.tahadaw.Repository.AiGeneratedQuestionRepository;
 import org.example.tahadaw.Repository.AiQuestionAnswerRepository;
 import org.example.tahadaw.Repository.GiftPlanRepository;
@@ -87,7 +86,7 @@ public class AiQuestionService {
     public List<AiGeneratedQuestionDTOOut> generateQuestions(Long userId, Long giftPlanId) {
         GiftPlan giftPlan = requireOwnedGiftPlan(userId, giftPlanId);
 
-        if (giftPlan.getStatus() != GiftPlanStatus.REQUIRED_QUESTIONS_ANSWERED) {
+        if (giftPlan.getStatus() != "REQUIRED_QUESTIONS_ANSWERED") {
             throw new ApiException("Answer all required questions before generating AI follow-up questions.");
         }
         if (aiGeneratedQuestionRepository.existsByGiftPlan_Id(giftPlanId)) {
@@ -112,7 +111,7 @@ public class AiQuestionService {
             aiGeneratedQuestionRepository.save(question);
         }
 
-        giftPlan.setStatus(GiftPlanStatus.AI_QUESTIONS_GENERATED);
+        giftPlan.setStatus("AI_QUESTIONS_GENERATED");
         giftPlan.setUpdatedAt(now);
         giftPlanRepository.save(giftPlan);
 
@@ -132,7 +131,7 @@ public class AiQuestionService {
                                                     AiQuestionAnswersSubmitDTOIn request) {
         GiftPlan giftPlan = requireOwnedGiftPlan(userId, giftPlanId);
 
-        if (giftPlan.getStatus() != GiftPlanStatus.AI_QUESTIONS_GENERATED) {
+        if (giftPlan.getStatus() != "AI_QUESTIONS_GENERATED") {
             throw new ApiException("Generate AI follow-up questions before submitting answers.");
         }
 
@@ -177,7 +176,7 @@ public class AiQuestionService {
             aiQuestionAnswerRepository.save(answer);
         }
 
-        giftPlan.setStatus(GiftPlanStatus.AI_QUESTIONS_ANSWERED);
+        giftPlan.setStatus("AI_QUESTIONS_ANSWERED");
         giftPlan.setUpdatedAt(now);
         giftPlanRepository.save(giftPlan);
 

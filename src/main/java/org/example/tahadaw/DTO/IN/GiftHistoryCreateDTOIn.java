@@ -5,7 +5,6 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.example.tahadaw.Model.enums.OccasionType;
 
 import java.time.LocalDate;
 
@@ -22,7 +21,7 @@ public class GiftHistoryCreateDTOIn {
     @NotBlank
     private String giftName;
 
-    private OccasionType occasionType;
+    private String occasionType;
     private LocalDate giftDate;
     private Long priceMinor;
     private Boolean wasGifted;

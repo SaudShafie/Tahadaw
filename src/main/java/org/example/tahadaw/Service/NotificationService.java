@@ -7,7 +7,6 @@ import org.example.tahadaw.DTO.IN.NotificationUpdateDTOIn;
 import org.example.tahadaw.DTO.OUT.NotificationDTOOut;
 import org.example.tahadaw.Model.Notification;
 import org.example.tahadaw.Model.User;
-import org.example.tahadaw.Model.enums.NotificationStatus;
 import org.example.tahadaw.Repository.NotificationRepository;
 import org.example.tahadaw.Repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -33,7 +32,7 @@ public class NotificationService {
         notification.setTitle(request.getTitle());
         notification.setMessage(request.getMessage());
         notification.setType(request.getType());
-        notification.setStatus(request.getStatus() != null ? request.getStatus() : NotificationStatus.UNREAD);
+        notification.setStatus(request.getStatus() != null ? request.getStatus() : "UNREAD");
         notification.setCreatedAt(LocalDateTime.now());
 
         return toDto(notificationRepository.save(notification));

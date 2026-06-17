@@ -6,7 +6,6 @@ import org.example.tahadaw.DTO.IN.GiftPlanDTOIn;
 import org.example.tahadaw.Model.GiftPlan;
 import org.example.tahadaw.Model.Recipient;
 import org.example.tahadaw.Model.User;
-import org.example.tahadaw.Model.enums.GiftPlanStatus;
 import org.example.tahadaw.Repository.GiftPlanRepository;
 import org.example.tahadaw.Repository.RecipientRepository;
 import org.example.tahadaw.Repository.UserRepository;
@@ -45,7 +44,7 @@ public class GiftPlanService {
         giftPlan.setCurrency(request.getCurrency());
         giftPlan.setPreferredGiftStyle(request.getPreferredGiftStyle());
         giftPlan.setLanguage(request.getLanguage());
-        giftPlan.setStatus(GiftPlanStatus.CREATED);
+        giftPlan.setStatus("CREATED");
         giftPlan.setUser(user);
         giftPlan.setRecipient(recipient);
         giftPlan.setCreatedAt(now);

@@ -6,7 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.tahadaw.Model.enums.QuestionType;
 
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -25,9 +24,8 @@ public class RequiredQuestion {
     @Column(columnDefinition = "text not null")
     private String questionText;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(20) not null")
-    private QuestionType questionType;
+        @Column(columnDefinition = "varchar(20) not null")
+    private String questionType;
 
     @Column(columnDefinition = "boolean not null")
     private Boolean isActive;

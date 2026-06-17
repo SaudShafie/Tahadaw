@@ -8,7 +8,6 @@ import org.example.tahadaw.DTO.OUT.SelectedProductDTOOut;
 import org.example.tahadaw.Model.GiftIdeaRecommendation;
 import org.example.tahadaw.Model.GiftPlan;
 import org.example.tahadaw.Model.SelectedProduct;
-import org.example.tahadaw.Model.enums.GiftPlanStatus;
 import org.example.tahadaw.Repository.GiftIdeaRecommendationRepository;
 import org.example.tahadaw.Repository.GiftPlanRepository;
 import org.example.tahadaw.Repository.SelectedProductRepository;
@@ -129,7 +128,7 @@ public class ProductSearchService {
         selectedProduct.setCreatedAt(LocalDateTime.now());
         selectedProduct = selectedProductRepository.save(selectedProduct);
 
-        giftPlan.setStatus(GiftPlanStatus.PRODUCT_SELECTED);
+        giftPlan.setStatus("PRODUCT_SELECTED");
         giftPlan.setUpdatedAt(LocalDateTime.now());
         giftPlanRepository.save(giftPlan);
 

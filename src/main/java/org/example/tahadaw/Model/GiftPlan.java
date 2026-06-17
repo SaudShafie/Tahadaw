@@ -6,9 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.tahadaw.Model.enums.GiftPlanStatus;
-import org.example.tahadaw.Model.enums.GiftStyle;
-import org.example.tahadaw.Model.enums.OccasionType;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -34,9 +31,8 @@ public class GiftPlan {
     @JoinColumn(name = "recipient_id", nullable = false)
     private Recipient recipient;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(30) not null")
-    private OccasionType occasionType;
+        @Column(columnDefinition = "varchar(30) not null")
+    private String occasionType;
 
     @Column(columnDefinition = "date")
     private LocalDate occasionDate;
@@ -47,16 +43,14 @@ public class GiftPlan {
     @Column(columnDefinition = "varchar(3) not null")
     private String currency;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(20)")
-    private GiftStyle preferredGiftStyle;
+        @Column(columnDefinition = "varchar(20)")
+    private String preferredGiftStyle;
 
     @Column(columnDefinition = "varchar(10)")
     private String language;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(40) not null")
-    private GiftPlanStatus status;
+        @Column(columnDefinition = "varchar(40) not null")
+    private String status;
 
     @Column(columnDefinition = "text")
     private String recommendationSummary;

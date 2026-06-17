@@ -8,7 +8,6 @@ import org.example.tahadaw.DTO.OUT.GroupGiftDTOOut;
 import org.example.tahadaw.Model.GroupGift;
 import org.example.tahadaw.Model.Recipient;
 import org.example.tahadaw.Model.User;
-import org.example.tahadaw.Model.enums.GroupGiftStatus;
 import org.example.tahadaw.Repository.GroupGiftRepository;
 import org.example.tahadaw.Repository.RecipientRepository;
 import org.example.tahadaw.Repository.UserRepository;
@@ -41,7 +40,7 @@ public class GroupGiftService {
         groupGift.setResponsiblePersonEmail(request.getResponsiblePersonEmail());
         groupGift.setGiftGivingDate(request.getGiftGivingDate());
         groupGift.setVotingDeadline(request.getVotingDeadline());
-        groupGift.setStatus(GroupGiftStatus.OPEN);
+        groupGift.setStatus("OPEN");
         groupGift.setCreatedAt(LocalDateTime.now());
 
         return toDto(groupGiftRepository.save(groupGift));

@@ -6,7 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.tahadaw.Model.enums.InviteStatus;
 
 import java.time.LocalDateTime;
 
@@ -35,9 +34,8 @@ public class GroupGiftInvite {
     @Column(unique = true, columnDefinition = "varchar(64) not null")
     private String token;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(20) not null")
-    private InviteStatus status;
+        @Column(columnDefinition = "varchar(20) not null")
+    private String status;
 
     @Column(updatable = false, columnDefinition = "datetime not null")
     private LocalDateTime createdAt;
