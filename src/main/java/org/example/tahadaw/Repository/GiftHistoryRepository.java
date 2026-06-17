@@ -15,4 +15,5 @@ public interface GiftHistoryRepository extends JpaRepository<GiftHistory, Long> 
     List<GiftHistory> findByRecipient_IdAndUser_IdOrderByCreatedAtDesc(Long recipientId, Long userId);
 
     boolean existsByGiftIdeaRecommendation_Id(Long giftIdeaRecommendationId);
+
 }

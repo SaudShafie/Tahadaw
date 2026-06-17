@@ -44,8 +44,6 @@ public class GiftQualityCheck {
         @Column(columnDefinition = "varchar(20)")
     private String suitability;
 
-        @Column(columnDefinition = "varchar(10)")
-    private String riskLevel;
 
     @Column(columnDefinition = "text")
     private String strengths;

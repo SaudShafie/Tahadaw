@@ -18,13 +18,11 @@ public class RecipientService {
     private final RecipientRepository recipientRepository;
     private final UserRepository userRepository;
 
+    //Bayan CRUD
     public void addRecipient(Long userId , Recipient recipient){
 
-        User user = userRepository.findUserById(userId).orElse(null);
+        User user = userRepository.findUserById(userId).orElseThrow(() -> new ApiException("User not found"));
 
-        if(user == null){
-            throw new ApiException("User not found");
-        }
 
         recipient.setUser(user);
         recipient.setCreatedAt(LocalDateTime.now());
@@ -37,13 +35,13 @@ public class RecipientService {
         return recipientRepository.findAll();
     }
 
-    public void updateRecipient(Long recipientId, Recipient recipient){
+    public void updateRecipient(Long userId, Long recipientId, Recipient recipient){
 
-        Recipient oldRecipient = recipientRepository.findRecipientById(recipientId).orElse(null);
+        userRepository.findUserById(userId)
+                .orElseThrow(() -> new ApiException("User not found"));
 
-        if(oldRecipient == null){
-            throw new ApiException("Recipient not found");
-        }
+        Recipient oldRecipient = recipientRepository.findRecipientByIdAndUser_Id(recipientId, userId)
+                .orElseThrow(() -> new ApiException("Recipient not found or does not belong to this user"));
 
         oldRecipient.setName(recipient.getName());
         oldRecipient.setRelationship(recipient.getRelationship());
@@ -57,7 +55,6 @@ public class RecipientService {
         oldRecipient.setPersonalityStyle(recipient.getPersonalityStyle());
         oldRecipient.setSizeInfo(recipient.getSizeInfo());
         oldRecipient.setNotes(recipient.getNotes());
-        
 
         oldRecipient.setUpdatedAt(LocalDateTime.now());
 
@@ -65,14 +62,30 @@ public class RecipientService {
     }
 
 
-    public void deleteRecipient(Long recipientId){
+    public void deleteRecipient(Long userId , Long recipientId){
 
-        Recipient recipient = recipientRepository.findRecipientById(recipientId).orElse(null);
+        userRepository.findUserById(userId).orElseThrow(() -> new ApiException("User not found"));
 
-        if(recipient == null){
-            throw new ApiException("Recipient not found");
-        }
+        Recipient recipient = recipientRepository.findRecipientByIdAndUser_Id(recipientId, userId)
+                .orElseThrow(() -> new ApiException("Recipient not found or does not belong to this user"));
 
         recipientRepository.delete(recipient);
+    }
+
+    //Bayan
+    public List<Recipient> getRecipientsByUserId(Long userId){
+
+        User user = userRepository.findUserById(userId).orElseThrow(() -> new ApiException("User not found"));
+        return recipientRepository.findAllByUser_Id(user.getId());
+    }
+
+    //Bayan
+    public Recipient getRecipientByIdAndUserId(Long userId, Long recipientId){
+
+        userRepository.findUserById(userId)
+                .orElseThrow(() -> new ApiException("User not found"));
+
+        return recipientRepository.findRecipientByIdAndUser_Id(recipientId, userId)
+                .orElseThrow(() -> new ApiException("Recipient not found or does not belong to this user"));
     }
 }
