@@ -6,9 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.tahadaw.Model.enums.CardSize;
-import org.example.tahadaw.Model.enums.GiftCardStatus;
-import org.example.tahadaw.Model.enums.LinkType;
 
 import java.time.LocalDateTime;
 
@@ -43,13 +40,11 @@ public class GiftCard {
     @Column(columnDefinition = "varchar(100) not null")
     private String senderName;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(10)")
-    private CardSize cardSize;
+        @Column(columnDefinition = "varchar(10)")
+    private String cardSize;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(20)")
-    private LinkType linkType;
+        @Column(columnDefinition = "varchar(20)")
+    private String linkType;
 
     @Column(columnDefinition = "varchar(2048)")
     private String linkUrl;
@@ -69,9 +64,8 @@ public class GiftCard {
     @Column(columnDefinition = "varchar(100)")
     private String sentToEmail;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(20) not null")
-    private GiftCardStatus status;
+        @Column(columnDefinition = "varchar(20) not null")
+    private String status;
 
     @Column(updatable = false, columnDefinition = "datetime not null")
     private LocalDateTime createdAt;

@@ -6,9 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.tahadaw.Model.enums.FitLevel;
-import org.example.tahadaw.Model.enums.PriceBand;
-import org.example.tahadaw.Model.enums.RiskLevel;
 
 import java.time.LocalDateTime;
 
@@ -34,24 +31,20 @@ public class GiftIdeaRecommendation {
     @Column(columnDefinition = "varchar(100)")
     private String category;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(20)")
-    private PriceBand priceBand;
+        @Column(columnDefinition = "varchar(20)")
+    private String priceBand;
 
     @Column(columnDefinition = "text")
     private String reason;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(10)")
-    private FitLevel emotionalFit;
+        @Column(columnDefinition = "varchar(10)")
+    private String emotionalFit;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(10)")
-    private FitLevel practicalFit;
+        @Column(columnDefinition = "varchar(10)")
+    private String practicalFit;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(10)")
-    private RiskLevel riskLevel;
+        @Column(columnDefinition = "varchar(10)")
+    private String riskLevel;
 
     @Column(columnDefinition = "text")
     private String aiExplanation;

@@ -6,7 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.tahadaw.Model.enums.Role;
 
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -37,9 +36,8 @@ public class User {
     @Column(columnDefinition = "varchar(20)")
     private String phoneNumber;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(20) not null")
-    private Role role;
+        @Column(columnDefinition = "varchar(20) not null")
+    private String role;
 
     @Column(columnDefinition = "boolean not null")
     private Boolean isPremium;

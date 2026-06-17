@@ -6,9 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.tahadaw.Model.enums.OccasionType;
-import org.example.tahadaw.Model.enums.RiskLevel;
-import org.example.tahadaw.Model.enums.Suitability;
 
 import java.time.LocalDateTime;
 
@@ -41,17 +38,14 @@ public class GiftQualityCheck {
     @Column(columnDefinition = "bigint")
     private Long priceMinor;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(30)")
-    private OccasionType occasionType;
+        @Column(columnDefinition = "varchar(30)")
+    private String occasionType;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(20)")
-    private Suitability suitability;
+        @Column(columnDefinition = "varchar(20)")
+    private String suitability;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(10)")
-    private RiskLevel riskLevel;
+        @Column(columnDefinition = "varchar(10)")
+    private String riskLevel;
 
     @Column(columnDefinition = "text")
     private String strengths;

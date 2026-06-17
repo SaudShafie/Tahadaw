@@ -6,8 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.tahadaw.Model.enums.ReminderChannel;
-import org.example.tahadaw.Model.enums.ReminderStatus;
 
 import java.time.LocalDateTime;
 
@@ -45,13 +43,11 @@ public class Reminder {
     @Column(columnDefinition = "text")
     private String message;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(20) not null")
-    private ReminderChannel channel;
+        @Column(columnDefinition = "varchar(20) not null")
+    private String channel;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(20) not null")
-    private ReminderStatus status;
+        @Column(columnDefinition = "varchar(20) not null")
+    private String status;
 
     @Column(updatable = false, columnDefinition = "datetime not null")
     private LocalDateTime createdAt;

@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.example.tahadaw.Api.ApiException;
 import org.example.tahadaw.Model.GiftIdeaRecommendation;
 import org.example.tahadaw.Model.GiftPlan;
-import org.example.tahadaw.Model.enums.GiftPlanStatus;
 import org.example.tahadaw.Repository.GiftIdeaRecommendationRepository;
 import org.example.tahadaw.Repository.GiftPlanRepository;
 import org.springframework.stereotype.Service;
@@ -36,8 +35,8 @@ public class GiftRecommendationService {
         }
 
         giftPlan.setSelectedGiftIdea(recommendation);
-        if (giftPlan.getStatus() == GiftPlanStatus.RECOMMENDATIONS_GENERATED) {
-            giftPlan.setStatus(GiftPlanStatus.GIFT_IDEA_SELECTED);
+        if (giftPlan.getStatus() == "RECOMMENDATIONS_GENERATED") {
+            giftPlan.setStatus("GIFT_IDEA_SELECTED");
         }
         giftPlan.setUpdatedAt(LocalDateTime.now());
         giftPlanRepository.save(giftPlan);

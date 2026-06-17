@@ -5,7 +5,6 @@ import org.example.tahadaw.Api.ApiException;
 import org.example.tahadaw.DTO.IN.UserDTOIn;
 import org.example.tahadaw.DTO.OUT.UserDTOOut;
 import org.example.tahadaw.Model.User;
-import org.example.tahadaw.Model.enums.Role;
 import org.example.tahadaw.Repository.UserRepository;
 import org.springframework.stereotype.Service;
 
@@ -38,7 +37,7 @@ public class UserService {
         user.setEmail(userDTOIn.getEmail());
         user.setPhoneNumber(userDTOIn.getPhoneNumber());
 
-        user.setRole(Role.USER);
+        user.setRole("USER");
         user.setIsPremium(false);
 
         user.setCreatedAt(LocalDateTime.now());

@@ -5,8 +5,6 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.example.tahadaw.Model.enums.NotificationStatus;
-import org.example.tahadaw.Model.enums.NotificationType;
 
 @Data
 @AllArgsConstructor
@@ -20,7 +18,7 @@ public class NotificationCreateDTOIn {
     private String message;
 
     @NotNull
-    private NotificationType type;
+    private String type;
 
-    private NotificationStatus status;
+    private String status;
 }

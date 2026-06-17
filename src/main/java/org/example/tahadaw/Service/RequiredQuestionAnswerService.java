@@ -8,7 +8,6 @@ import org.example.tahadaw.DTO.OUT.RequiredQuestionAnswerDTOOut;
 import org.example.tahadaw.Model.GiftPlan;
 import org.example.tahadaw.Model.RequiredQuestion;
 import org.example.tahadaw.Model.RequiredQuestionAnswer;
-import org.example.tahadaw.Model.enums.GiftPlanStatus;
 import org.example.tahadaw.Repository.GiftPlanRepository;
 import org.example.tahadaw.Repository.RequiredQuestionAnswerRepository;
 import org.example.tahadaw.Repository.RequiredQuestionRepository;
@@ -33,7 +32,7 @@ public class RequiredQuestionAnswerService {
                                                             RequiredQuestionAnswersSubmitDTOIn request) {
         GiftPlan giftPlan = requireOwnedGiftPlan(userId, giftPlanId);
 
-        if (giftPlan.getStatus() != GiftPlanStatus.CREATED) {
+        if (giftPlan.getStatus() != "CREATED") {
             throw new ApiException("Required answers can only be submitted while the gift plan is in CREATED status.");
         }
 
@@ -75,7 +74,7 @@ public class RequiredQuestionAnswerService {
             requiredQuestionAnswerRepository.save(answer);
         }
 
-        giftPlan.setStatus(GiftPlanStatus.REQUIRED_QUESTIONS_ANSWERED);
+        giftPlan.setStatus("REQUIRED_QUESTIONS_ANSWERED");
         giftPlan.setUpdatedAt(LocalDateTime.now());
         giftPlanRepository.save(giftPlan);
 

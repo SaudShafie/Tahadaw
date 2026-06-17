@@ -6,7 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.tahadaw.Model.enums.PriceBand;
 
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -33,9 +32,8 @@ public class GroupGiftOption {
     @Column(columnDefinition = "text")
     private String description;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(20)")
-    private PriceBand priceBand;
+        @Column(columnDefinition = "varchar(20)")
+    private String priceBand;
 
     @Column(columnDefinition = "text")
     private String reason;

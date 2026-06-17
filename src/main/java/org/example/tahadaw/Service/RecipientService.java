@@ -57,7 +57,7 @@ public class RecipientService {
         oldRecipient.setPersonalityStyle(recipient.getPersonalityStyle());
         oldRecipient.setSizeInfo(recipient.getSizeInfo());
         oldRecipient.setNotes(recipient.getNotes());
-        oldRecipient.setConsentAcknowledged(recipient.getConsentAcknowledged());
+        
 
         oldRecipient.setUpdatedAt(LocalDateTime.now());
 

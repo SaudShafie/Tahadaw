@@ -11,7 +11,6 @@ import org.example.tahadaw.Model.GiftPlan;
 import org.example.tahadaw.Model.Recipient;
 import org.example.tahadaw.Model.SelectedProduct;
 import org.example.tahadaw.Model.User;
-import org.example.tahadaw.Model.enums.GiftPlanStatus;
 import org.example.tahadaw.Repository.GiftHistoryRepository;
 import org.example.tahadaw.Repository.GiftIdeaRecommendationRepository;
 import org.example.tahadaw.Repository.GiftPlanRepository;
@@ -59,7 +58,7 @@ public class GiftHistoryService {
         history.setPriceMinor(priceMinor);
         history.setCreatedAt(LocalDateTime.now());
 
-        giftPlan.setStatus(GiftPlanStatus.COMPLETED);
+        giftPlan.setStatus("COMPLETED");
         giftPlan.setUpdatedAt(LocalDateTime.now());
         giftPlanRepository.save(giftPlan);
 
@@ -203,8 +202,8 @@ public class GiftHistoryService {
             return;
         }
         GiftPlan giftPlan = history.getGiftIdeaRecommendation().getGiftPlan();
-        if (giftPlan.getStatus() != GiftPlanStatus.COMPLETED) {
-            giftPlan.setStatus(GiftPlanStatus.COMPLETED);
+        if (giftPlan.getStatus() != "COMPLETED") {
+            giftPlan.setStatus("COMPLETED");
             giftPlan.setUpdatedAt(LocalDateTime.now());
             giftPlanRepository.save(giftPlan);
         }

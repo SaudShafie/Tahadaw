@@ -2,9 +2,6 @@ package org.example.tahadaw.DTO.OUT;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import org.example.tahadaw.Model.enums.CardSize;
-import org.example.tahadaw.Model.enums.GiftCardStatus;
-import org.example.tahadaw.Model.enums.LinkType;
 
 import java.time.LocalDateTime;
 
@@ -18,10 +15,10 @@ public class GiftCardDTOOut {
     private Long giftMessageId;
     private String recipientName;
     private String senderName;
-    private CardSize cardSize;
-    private LinkType linkType;
+    private String cardSize;
+    private String linkType;
     private String linkUrl;
     private String sentToEmail;
-    private GiftCardStatus status;
+    private String status;
     private LocalDateTime createdAt;
 }

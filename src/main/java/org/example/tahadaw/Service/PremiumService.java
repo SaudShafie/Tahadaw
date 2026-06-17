@@ -7,8 +7,6 @@ import org.example.tahadaw.DTO.OUT.PremiumStatusDTOOut;
 import org.example.tahadaw.Model.Payment;
 import org.example.tahadaw.Model.PremiumAccess;
 import org.example.tahadaw.Model.User;
-import org.example.tahadaw.Model.enums.PaymentStatus;
-import org.example.tahadaw.Model.enums.PaymentType;
 import org.example.tahadaw.Repository.PremiumAccessRepository;
 import org.example.tahadaw.Repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -45,7 +43,7 @@ public class PremiumService {
     @Transactional
     public void activatePremium(User user, Payment payment) {
         if (Boolean.TRUE.equals(user.getIsPremium()) && premiumAccessRepository.findByUser(user).isPresent()) {
-            payment.setStatus(PaymentStatus.PAID);
+            payment.setStatus("PAID");
             return;
         }
 
@@ -59,6 +57,6 @@ public class PremiumService {
         access.setActivatedAt(LocalDateTime.now());
         premiumAccessRepository.save(access);
 
-        payment.setStatus(PaymentStatus.PAID);
+        payment.setStatus("PAID");
     }
 }

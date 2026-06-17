@@ -9,7 +9,6 @@ import org.example.tahadaw.Model.GiftCard;
 import org.example.tahadaw.Model.GiftMessage;
 import org.example.tahadaw.Model.GiftPlan;
 import org.example.tahadaw.Model.User;
-import org.example.tahadaw.Model.enums.GiftCardStatus;
 import org.example.tahadaw.Repository.GiftCardRepository;
 import org.example.tahadaw.Repository.GiftMessageRepository;
 import org.example.tahadaw.Repository.GiftPlanRepository;
@@ -48,7 +47,7 @@ public class GiftCardService {
         giftCard.setLinkType(request.getLinkType());
         giftCard.setLinkUrl(request.getLinkUrl());
         giftCard.setSentToEmail(request.getSentToEmail());
-        giftCard.setStatus(request.getStatus() != null ? request.getStatus() : GiftCardStatus.DRAFT);
+        giftCard.setStatus(request.getStatus() != null ? request.getStatus() : "DRAFT");
         giftCard.setCreatedAt(LocalDateTime.now());
 
         if (request.getGiftMessageId() != null) {
