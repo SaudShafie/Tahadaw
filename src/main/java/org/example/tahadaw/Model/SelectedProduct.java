@@ -51,4 +51,8 @@ public class SelectedProduct {
 
     @Column(updatable = false, columnDefinition = "datetime")
     private LocalDateTime createdAt;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JsonIgnore
+    private GiftPlan giftPlan;
 }

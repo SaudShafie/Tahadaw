@@ -25,11 +25,9 @@ public class GiftRecommendationService {
 
     private final GiftIdeaRecommendationRepository giftIdeaRecommendationRepository;
     private final GiftPlanRepository giftPlanRepository;
-    private final AiGeneratedQuestionRepository aiGeneratedQuestionRepository;
-    private final AiQuestionAnswerRepository aiQuestionAnswerRepository;
     private final RequiredQuestionAnswerRepository requiredQuestionAnswerRepository;
     private final AiService aiService;
-    private final AiQuestionService aiQuestionService;
+    private final AiAnswerService aiAnswerService;
     private final ModelMapper modelMapper;
 
     @Transactional
@@ -52,7 +50,6 @@ public class GiftRecommendationService {
             idea.setIsSelected(idea.getId().equals(recommendationId));
             giftIdeaRecommendationRepository.save(idea);
         }
-
         giftPlan.setSelectedGiftIdea(recommendation);
         if (giftPlan.getStatus() == "RECOMMENDATIONS_GENERATED") {
             giftPlan.setStatus("GIFT_IDEA_SELECTED");
@@ -109,7 +106,7 @@ public class GiftRecommendationService {
         List<RequiredQuestionAnswer> requiredAnswers =
                 requiredQuestionAnswerRepository.findRequiredQuestionAnswerByGiftPlan(giftPlan);
 
-        List<AiQuestionAnswerDTOOut> aiQuestionAndAnswer=aiQuestionService.listAnswers(giftPlan.getUser().getId(), giftPlan.getId());
+        List<AiQuestionAnswerDTOOut> aiQuestionAndAnswer=aiAnswerService.listAnswers(giftPlan.getUser().getId(), giftPlan.getId());
 
         StringBuilder context = new StringBuilder();
 
@@ -204,6 +201,18 @@ public class GiftRecommendationService {
             throw new ApiException("Recipient must belong to the gift plan owner.");
         }
         return giftPlan;
+    }
+
+    public GiftIdeaRecommendation getSelectedRecommendation(Long giftPlanId) {
+        GiftPlan giftPlan = giftPlanRepository.findGiftPlanById(giftPlanId)
+                .orElseThrow(() -> new ApiException("Gift plan not found."));
+
+        GiftIdeaRecommendation selectedIdea = giftIdeaRecommendationRepository
+                .findByGiftPlanAndIsSelectedTrue(giftPlan)
+                .orElseThrow(() -> new ApiException("You have not select any Recommendation for this gift plan."));
+
+
+        return selectedIdea;
     }
 
 
