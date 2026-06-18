@@ -24,12 +24,12 @@ public class RequiredQuestionAnswer {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "gift_plan_id", nullable = false)
     @JsonIgnore
     private GiftPlan giftPlan;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "required_question_id", nullable = false)
     private RequiredQuestion requiredQuestion;
 

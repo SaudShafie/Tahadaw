@@ -20,7 +20,7 @@ public class GiftIdeaRecommendation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "gift_plan_id", nullable = false)
     @JsonIgnore
     private GiftPlan giftPlan;
@@ -58,11 +58,11 @@ public class GiftIdeaRecommendation {
     @Column(updatable = false, columnDefinition = "datetime not null")
     private LocalDateTime createdAt;
 
-    @OneToOne(mappedBy = "giftIdeaRecommendation", cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "giftIdeaRecommendation", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
     private SelectedProduct selectedProduct;
 
-    @OneToOne(mappedBy = "giftIdeaRecommendation", cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "giftIdeaRecommendation", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
     private GiftHistory giftHistory;
 }

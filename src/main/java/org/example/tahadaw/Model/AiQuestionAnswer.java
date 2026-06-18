@@ -21,7 +21,7 @@ public class AiQuestionAnswer {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ai_generated_question_id", nullable = false, unique = true)
     @JsonIgnore
     private AiGeneratedQuestion aiGeneratedQuestion;

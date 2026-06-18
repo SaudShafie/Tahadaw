@@ -20,7 +20,7 @@ public class Payment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     @JsonIgnore
     private User user;
@@ -46,7 +46,7 @@ public class Payment {
     @Column(updatable = false, columnDefinition = "datetime not null")
     private LocalDateTime createdAt;
 
-    @OneToOne(mappedBy = "payment", cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "payment", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
     private PremiumAccess premiumAccess;
 }

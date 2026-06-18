@@ -20,7 +20,7 @@ public class SelectedProduct {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "gift_idea_recommendation_id", nullable = false, unique = true)
     @JsonIgnore
     private GiftIdeaRecommendation giftIdeaRecommendation;

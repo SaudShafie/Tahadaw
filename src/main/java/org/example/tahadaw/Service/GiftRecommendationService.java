@@ -41,4 +41,5 @@ public class GiftRecommendationService {
         giftPlan.setUpdatedAt(LocalDateTime.now());
         giftPlanRepository.save(giftPlan);
     }
+
 }

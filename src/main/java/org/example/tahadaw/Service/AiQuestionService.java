@@ -203,7 +203,7 @@ public class AiQuestionService {
         return giftPlan;
     }
 
-    private String buildGeneratePrompt(GiftPlan giftPlan) {
+    private String  buildGeneratePrompt(GiftPlan giftPlan) {
         Recipient recipient = giftPlan.getRecipient();
         List<RequiredQuestionAnswer> requiredAnswers =
                 requiredQuestionAnswerRepository.findByGiftPlan_IdOrderByCreatedAtAsc(giftPlan.getId());

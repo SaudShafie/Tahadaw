@@ -20,7 +20,7 @@ public class GroupGiftInvite {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_gift_id", nullable = false)
     @JsonIgnore
     private GroupGift groupGift;
@@ -40,7 +40,7 @@ public class GroupGiftInvite {
     @Column(updatable = false, columnDefinition = "datetime not null")
     private LocalDateTime createdAt;
 
-    @OneToOne(mappedBy = "invite", cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "invite", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
     private GroupGiftVote vote;
 }

@@ -20,17 +20,17 @@ public class GiftCard {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     @JsonIgnore
     private User user;
 
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "gift_plan_id", nullable = false, unique = true)
     @JsonIgnore
     private GiftPlan giftPlan;
 
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "gift_message_id", unique = true)
     private GiftMessage giftMessage;
 
