@@ -5,17 +5,36 @@ import org.example.tahadaw.Model.GroupGiftInvite;
 import org.example.tahadaw.Model.Reminder;
 import org.example.tahadaw.Model.User;
 
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
+
 public final class WhatsAppTemplates {
 
-    private static final String SYSTEM_NAME = "Tahadaw";
+    private static final String SYSTEM_NAME = "تهادوا";
 
     private WhatsAppTemplates() {
     }
 
+
     public static String buildReminder(User user, Reminder reminder) {
-        return "Hello " + user.getFullName() + "\n\n"
+
+        String recipientName = reminder.getRecipient() != null
+                ? reminder.getRecipient().getName()
+                : "المستلم";
+
+        DateTimeFormatter formatter =
+                DateTimeFormatter.ofPattern("dd/MM/yyyy - hh:mm a", Locale.forLanguageTag("ar-SA"));
+
+        String formattedReminderDate = reminder.getReminderDate().format(formatter);
+
+        return "🎁 تذكير من " + SYSTEM_NAME + "\n\n"
+                + "مرحبًا " + user.getFullName() + " 👋\n\n"
+                + "لديك تذكير مجدول لهدية " + recipientName + " 🎁\n\n"
+                + "تفاصيل التذكير:\n"
                 + reminder.getMessage() + "\n\n"
-                + SYSTEM_NAME + " team";
+                + "وقت التذكير:\n"
+                + formattedReminderDate + "\n\n"
+                + "فريق " + SYSTEM_NAME;
     }
 
     public static String buildGroupGiftVoteReminder(GroupGiftInvite invite, GroupGift groupGift, String voteUrl) {

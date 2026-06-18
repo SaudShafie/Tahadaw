@@ -43,10 +43,8 @@ public class Reminder {
     @Column(columnDefinition = "text")
     private String message;
 
-        @Column(columnDefinition = "varchar(20) not null")
-    private String channel;
 
-        @Column(columnDefinition = "varchar(20) not null")
+    @Column(columnDefinition = "varchar(20) not null")
     private String status;
 
     @Column(updatable = false, columnDefinition = "datetime not null")

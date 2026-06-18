@@ -27,14 +27,14 @@ public class GiftQualityCheckController {
     }
 
 
-    @GetMapping("/recipients/{recipientId}/gift-quality-checks")
+    @GetMapping("/recipients/{recipientId}")
     public ResponseEntity<?> getGiftQualityChecksByRecipient(@PathVariable Long recipientId,
                                                              @RequestParam Long userId) {
 
         return ResponseEntity.status(200).body(giftQualityCheckService.getGiftQualityChecksByRecipient(userId, recipientId));
     }
 
-    @GetMapping("/gift-quality-checks/{checkId}")
+    @GetMapping("/get-one/{checkId}")
     public ResponseEntity<?> getGiftQualityCheckById(@PathVariable Long checkId,
                                                      @RequestParam Long userId) {
 

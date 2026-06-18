@@ -59,13 +59,11 @@ public class GiftQualityCheckService {
 
         giftQualityCheckRepository.save(giftQualityCheck);
 
-
-
-
     }
 
 
     //Bayan
+    /*
     private String buildQualityCheckPrompt(Recipient recipient,
                                            GiftQualityCheck giftQualityCheck,
                                            List<GiftHistory> giftHistories) {
@@ -118,7 +116,7 @@ public class GiftQualityCheckService {
             Gift to check:
             Gift name: %s
             Gift description: %s
-            Gift price minor: %s
+            Gift price: %s SAR
             Occasion type: %s
 
             Previous gift history:
@@ -138,7 +136,97 @@ public class GiftQualityCheckService {
                 recipient.getNotes(),
                 giftQualityCheck.getGiftName(),
                 giftQualityCheck.getGiftDescription(),
-                giftQualityCheck.getPriceMinor(),
+                giftQualityCheck.getPrice(),
+                giftQualityCheck.getOccasionType(),
+                historyText
+        );
+    }
+
+     */
+
+    private String buildQualityCheckPrompt(Recipient recipient,
+                                           GiftQualityCheck giftQualityCheck,
+                                           List<GiftHistory> giftHistories) {
+
+        StringBuilder historyText = new StringBuilder();
+
+        for (GiftHistory giftHistory : giftHistories) {
+            historyText.append("- ")
+                    .append(giftHistory.getGiftName())
+                    .append("\n");
+        }
+
+        if (historyText.isEmpty()) {
+            historyText.append("لا يوجد سجل هدايا سابق.");
+        }
+
+        return """
+            You are an AI assistant that checks if a gift is suitable for a recipient.
+
+            Evaluate the gift based on:
+            - Recipient profile
+            - Occasion
+            - Relationship
+            - Gift price / budget
+            - Recipient dislikes
+            - Previous gift history
+
+            Return JSON only in this exact format.
+
+            Important:
+            - Keep the JSON keys exactly in English.
+            - The suitability value must be exactly one of these Arabic values only:
+              مناسبة, محايد, غير مناسبة
+            - Write strengths, weaknesses, and aiAdvice in Arabic.
+            - Use a friendly, clear, and helpful Arabic tone for the user.
+            - Do not add any text before or after the JSON.
+            - Do not use markdown.
+
+            {
+              "suitability": "مناسبة or محايد or غير مناسبة",
+              "strengths": "اكتب هنا بالعربي لماذا قد تكون الهدية مناسبة",
+              "weaknesses": "اكتب هنا بالعربي ما الذي قد يجعل الهدية غير مناسبة",
+              "aiAdvice": "اكتب هنا نصيحة واضحة بالعربي للمستخدم"
+            }
+
+            Recipient profile:
+            Name: %s
+            Relationship: %s
+            Age: %s
+            Gender: %s
+            Interests: %s
+            Hobbies: %s
+            Favorite colors: %s
+            Favorite brands: %s
+            Dislikes: %s
+            Personality style: %s
+            Size info: %s
+            Notes: %s
+
+            Gift to check:
+            Gift name: %s
+            Gift description: %s
+            Gift price: %s SAR
+            Occasion type: %s
+
+            Previous gift history:
+            %s
+            """.formatted(
+                recipient.getName(),
+                recipient.getRelationship(),
+                recipient.getAge(),
+                recipient.getGender(),
+                recipient.getInterests(),
+                recipient.getHobbies(),
+                recipient.getFavoriteColors(),
+                recipient.getFavoriteBrands(),
+                recipient.getDislikes(),
+                recipient.getPersonalityStyle(),
+                recipient.getSizeInfo(),
+                recipient.getNotes(),
+                giftQualityCheck.getGiftName(),
+                giftQualityCheck.getGiftDescription(),
+                giftQualityCheck.getPrice(),
                 giftQualityCheck.getOccasionType(),
                 historyText
         );

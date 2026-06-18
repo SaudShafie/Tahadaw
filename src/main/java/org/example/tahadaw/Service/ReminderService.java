@@ -8,8 +8,10 @@ import org.example.tahadaw.Model.User;
 import org.example.tahadaw.Repository.RecipientRepository;
 import org.example.tahadaw.Repository.ReminderRepository;
 import org.example.tahadaw.Repository.UserRepository;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -20,20 +22,14 @@ public class ReminderService {
     private final ReminderRepository reminderRepository;
     private final UserRepository userRepository;
     private final RecipientRepository recipientRepository;
+    private final WhatsAppService whatsAppService;
 
+
+    //Bayan CRUD
     public void addReminder(Long userId, Long recipientId, Reminder reminder) {
 
-        User user = userRepository.findUserById(userId).orElse(null);
-
-        if (user == null) {
-            throw new ApiException("User not found");
-        }
-
-        Recipient recipient = recipientRepository.findRecipientById(recipientId).orElse(null);
-
-        if (recipient == null) {
-            throw new ApiException("Recipient not found");
-        }
+        User user = userRepository.findUserById(userId).orElseThrow(() -> new ApiException("User not found"));
+        Recipient recipient = recipientRepository.findRecipientById(recipientId).orElseThrow(() -> new ApiException("Recipient not found"));
 
         if (!recipient.getUser().getId().equals(userId)) {
             throw new ApiException("This recipient does not belong to this user");
@@ -53,28 +49,71 @@ public class ReminderService {
 
     public void updateReminder(Long reminderId, Reminder reminder) {
 
-        Reminder oldReminder = reminderRepository.findReminderById(reminderId).orElse(null);
-
-        if (oldReminder == null) {
-            throw new ApiException("Reminder not found");
-        }
+        Reminder oldReminder = reminderRepository.findReminderById(reminderId)
+                .orElseThrow(() -> new ApiException("Reminder not found"));
 
         oldReminder.setReminderDate(reminder.getReminderDate());
         oldReminder.setMessage(reminder.getMessage());
-        oldReminder.setChannel(reminder.getChannel());
 
         reminderRepository.save(oldReminder);
     }
 
     public void deleteReminder(Long reminderId) {
 
-        Reminder reminder = reminderRepository.findReminderById(reminderId).orElse(null);
-
-        if (reminder == null) {
-            throw new ApiException("Reminder not found");
-        }
+        Reminder reminder = reminderRepository.findReminderById(reminderId)
+                .orElseThrow(() -> new ApiException("Reminder not found"));
 
         reminderRepository.delete(reminder);
     }
+
+
+    //Bayan
+    public List<Reminder> getMyReminders(Long userId){
+
+        User user = userRepository.findUserById(userId).orElseThrow(() -> new ApiException("User not found"));
+
+        List<Reminder> reminders = reminderRepository.findAllByUser_IdOrderByReminderDateAsc(userId);
+
+
+        if(reminders.isEmpty()){
+            throw new ApiException("No reminders found");
+        }
+
+        return reminders;
+    }
+
+    //Bayan
+    //@Scheduled(cron = "0 0 8 * * *", zone = "Asia/Riyadh") //actual
+    @Scheduled(fixedRate = 60000)                           //for test
+    public void checkTodayRemindersAndSendWhatsApp(){
+
+        LocalDate today = LocalDate.now();
+
+        LocalDateTime startOfDay = today.atStartOfDay();
+        LocalDateTime endOfDay = today.plusDays(1).atStartOfDay();
+
+        List<Reminder> reminders = reminderRepository.findTodayPendingReminders("PENDING" , startOfDay , endOfDay);
+
+        for(Reminder reminder : reminders){
+
+            String message = WhatsAppTemplates.buildReminder(reminder.getUser(),reminder);
+
+            whatsAppService.sendWhatsApp(reminder.getUser().getPhoneNumber(),message);
+
+            reminder.setStatus("SENT");
+            reminderRepository.save(reminder);
+        }
+
+
+    }
+
+
+
+
+
+
+
+
+
 
 }

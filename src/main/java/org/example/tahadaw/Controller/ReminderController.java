@@ -42,4 +42,9 @@ public class ReminderController {
         return ResponseEntity.status(200).body(new ApiResponse("Reminder deleted successfully"));
     }
 
+
+    @GetMapping("/get-my/{userId}")
+    public ResponseEntity<?> getMyReminders(@PathVariable Long userId){
+        return ResponseEntity.status(200).body(reminderService.getMyReminders(userId));
+    }
 }

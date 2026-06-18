@@ -35,13 +35,13 @@ public class GiftQualityCheck {
     @Column(columnDefinition = "text")
     private String giftDescription;
 
-    @Column(columnDefinition = "bigint")
-    private Long priceMinor;
+    @Column(columnDefinition = "double")
+    private Double price;
 
-        @Column(columnDefinition = "varchar(30)")
+    @Column(columnDefinition = "varchar(30)")
     private String occasionType;
 
-        @Column(columnDefinition = "varchar(20)")
+    @Column(columnDefinition = "varchar(20)")
     private String suitability;
 
 
