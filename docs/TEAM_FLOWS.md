@@ -610,6 +610,7 @@ If `language` is omitted, falls back to the gift plan's language, then `en`.
 | `POST` | `/api/v1/gift-plans/{giftPlanId}/gift-card?userId=` | Create card |
 | `GET` | `/api/v1/gift-cards/my?userId=` | List mine |
 | `GET` | `/api/v1/gift-cards/{giftCardId}?userId=` | Get metadata |
+| `GET` | `/api/v1/gift-cards/{giftCardId}/image?userId=` | View card PNG |
 | `POST` | `/api/v1/gift-cards/{giftCardId}/send-email?userId=` | Email card |
 | `POST` | `/api/v1/qr-code/generate` | Test QR (dev) |
 
@@ -627,7 +628,7 @@ If `language` is omitted, falls back to the gift plan's language, then `en`.
 
 **Store `qrCodeImage` + `giftCardImage` as LONGBLOB.**
 
-**Services:** `GiftCardService`, `QrCodeService`, `EmailService` · **Status:** 🟢 QR done · 🔴 Card not implemented
+**Services:** `GiftCardService`, `QrCodeService`, `GiftCardImageService`, `EmailService` · **Status:** 🟢 Implemented (premium-gated; QR + card image as LONGBLOB; send-email)
 
 ---
 

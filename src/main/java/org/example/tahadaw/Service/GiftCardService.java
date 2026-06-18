@@ -27,11 +27,19 @@ public class GiftCardService {
     private final UserRepository userRepository;
     private final GiftPlanRepository giftPlanRepository;
     private final GiftMessageRepository giftMessageRepository;
+    private final PremiumService premiumService;
+    private final QrCodeService qrCodeService;
+    private final GiftCardImageService giftCardImageService;
+    private final EmailService emailService;
+
+    private static final String DEFAULT_CARD_MESSAGE =
+            "أطيب التهاني والأمنيات، هذه هدية خاصة لك بمناسبة يومك المميّز.";
 
     @Transactional
     public GiftCardDTOOut create(Long userId, GiftCardCreateDTOIn request) {
         User user = userRepository.findUserById(userId)
                 .orElseThrow(() -> new ApiException("User not found."));
+        premiumService.requirePremium(user);
         GiftPlan giftPlan = requireOwnedGiftPlan(userId, request.getGiftPlanId());
 
         if (giftCardRepository.findByGiftPlan_Id(giftPlan.getId()).isPresent()) {
@@ -62,6 +70,21 @@ public class GiftCardService {
             giftCard.setGiftMessage(giftMessage);
         }
 
+        renderImages(giftCard);
+
+        // Auto-deliver the rendered card to the owner so they can download it straight from their inbox.
+        // Email is optional in local/dev: if it fails, the card is still created and downloadable via /image.
+        String target = firstNonBlank(giftCard.getSentToEmail(), user.getEmail());
+        if (target != null) {
+            try {
+                emailService.sendGiftCardEmail(giftCard, user, target);
+                giftCard.setSentToEmail(target);
+                giftCard.setStatus("SENT");
+            } catch (ApiException ignored) {
+                // keep the card as DRAFT; it can be re-sent via the send-email endpoint.
+            }
+        }
+
         return toDto(giftCardRepository.save(giftCard));
     }
 
@@ -82,20 +105,26 @@ public class GiftCardService {
     public GiftCardDTOOut update(Long userId, Long giftCardId, GiftCardUpdateDTOIn request) {
         GiftCard giftCard = requireOwnedGiftCard(userId, giftCardId);
 
+        boolean imageRelevantChange = false;
+
         if (request.getRecipientName() != null) {
             giftCard.setRecipientName(request.getRecipientName());
+            imageRelevantChange = true;
         }
         if (request.getSenderName() != null) {
             giftCard.setSenderName(request.getSenderName());
+            imageRelevantChange = true;
         }
         if (request.getCardSize() != null) {
             giftCard.setCardSize(request.getCardSize());
+            imageRelevantChange = true;
         }
         if (request.getLinkType() != null) {
             giftCard.setLinkType(request.getLinkType());
         }
         if (request.getLinkUrl() != null) {
             giftCard.setLinkUrl(request.getLinkUrl());
+            imageRelevantChange = true;
         }
         if (request.getSentToEmail() != null) {
             giftCard.setSentToEmail(request.getSentToEmail());
@@ -104,7 +133,69 @@ public class GiftCardService {
             giftCard.setStatus(request.getStatus());
         }
 
+        if (imageRelevantChange) {
+            renderImages(giftCard);
+        }
+
         return toDto(giftCardRepository.save(giftCard));
+    }
+
+    @Transactional
+    public GiftCardDTOOut sendEmail(Long userId, Long giftCardId, String email) {
+        GiftCard giftCard = requireOwnedGiftCard(userId, giftCardId);
+
+        String target = firstNonBlank(email, giftCard.getSentToEmail(), giftCard.getUser().getEmail());
+        if (target == null) {
+            throw new ApiException("No destination email provided.");
+        }
+
+        emailService.sendGiftCardEmail(giftCard, giftCard.getUser(), target);
+
+        giftCard.setSentToEmail(target);
+        giftCard.setStatus("SENT");
+        return toDto(giftCardRepository.save(giftCard));
+    }
+
+    @Transactional
+    public byte[] getCardImage(Long userId, Long giftCardId) {
+        GiftCard giftCard = requireOwnedGiftCard(userId, giftCardId);
+        if (giftCard.getGiftCardImage() == null || giftCard.getGiftCardImage().length == 0) {
+            renderImages(giftCard);
+            giftCardRepository.save(giftCard);
+        }
+        return giftCard.getGiftCardImage();
+    }
+
+    private void renderImages(GiftCard giftCard) {
+        if (giftCard.getLinkUrl() != null && !giftCard.getLinkUrl().isBlank()) {
+            giftCard.setQrCodeImage(qrCodeService.generateQrCodePng(giftCard.getLinkUrl()));
+        } else {
+            giftCard.setQrCodeImage(null);
+        }
+
+        String linkedMessage = giftCard.getGiftMessage() != null
+                ? giftCard.getGiftMessage().getMessageText()
+                : null;
+        String messageText = (linkedMessage != null && !linkedMessage.isBlank())
+                ? linkedMessage
+                : DEFAULT_CARD_MESSAGE;
+
+        giftCard.setGiftCardImage(giftCardImageService.renderCard(
+                giftCard.getCardSize(),
+                giftCard.getRecipientName(),
+                giftCard.getSenderName(),
+                messageText,
+                giftCard.getQrCodeImage()
+        ));
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value.trim();
+            }
+        }
+        return null;
     }
 
     @Transactional

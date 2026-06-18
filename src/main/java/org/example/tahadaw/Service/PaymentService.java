@@ -95,13 +95,14 @@ public class PaymentService {
                 .orElseThrow(() -> new ApiException("User not found."));
 
         return paymentRepository.findByUserOrderByCreatedAtDesc(user).stream()
-                .map(payment -> toDto(payment, null))
+                .map(payment -> toDto(payment, null, null))
                 .toList();
     }
 
     private PaymentDTOOut syncFromMoyasarResponse(Payment payment, JsonNode moyasarResponse, User user) {
         String moyasarPaymentId = MoyasarService.readPaymentId(moyasarResponse);
         String moyasarStatus = MoyasarService.readStatus(moyasarResponse);
+        String transactionUrl = MoyasarService.readTransactionUrl(moyasarResponse);
 
         if (moyasarPaymentId != null && !moyasarPaymentId.isBlank()) {
             payment.setTransactionId(moyasarPaymentId);
@@ -121,10 +122,10 @@ public class PaymentService {
         }
 
         paymentRepository.save(payment);
-        return toDto(payment, moyasarStatus);
+        return toDto(payment, moyasarStatus, transactionUrl);
     }
 
-    private PaymentDTOOut toDto(Payment payment, String moyasarStatus) {
+    private PaymentDTOOut toDto(Payment payment, String moyasarStatus, String transactionUrl) {
         return new PaymentDTOOut(
                 payment.getId(),
                 payment.getAmountMinor(),
@@ -133,6 +134,7 @@ public class PaymentService {
                 payment.getProvider(),
                 payment.getTransactionId(),
                 moyasarStatus,
+                transactionUrl,
                 payment.getCreatedAt()
         );
     }
