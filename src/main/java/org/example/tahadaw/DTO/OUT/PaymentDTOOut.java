@@ -16,5 +16,6 @@ public class PaymentDTOOut {
     private String provider;
     private String transactionId;
     private String moyasarStatus;
+    private String transactionUrl;
     private LocalDateTime createdAt;
 }

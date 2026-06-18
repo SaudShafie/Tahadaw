@@ -3,12 +3,15 @@ package org.example.tahadaw.Controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.tahadaw.Api.ApiResponse;
+import org.example.tahadaw.DTO.IN.GiftMessageCreateDTOIn;
 import org.example.tahadaw.DTO.IN.GiftMessageGenerateDTOIn;
 import org.example.tahadaw.DTO.IN.GiftPlanDTOIn;
 import org.example.tahadaw.DTO.IN.ProductSelectDTOIn;
 import org.example.tahadaw.DTO.IN.AiQuestionAnswersSubmitDTOIn;
+import org.example.tahadaw.DTO.IN.GiftCardCreateDTOIn;
 import org.example.tahadaw.DTO.IN.RequiredQuestionAnswersSubmitDTOIn;
 import org.example.tahadaw.DTO.IN.SurprisePlanGenerateDTOIn;
+import org.example.tahadaw.DTO.OUT.GiftCardDTOOut;
 import org.example.tahadaw.DTO.OUT.AiGeneratedQuestionDTOOut;
 import org.example.tahadaw.DTO.OUT.AiQuestionAnswerDTOOut;
 import org.example.tahadaw.DTO.OUT.GiftHistoryDTOOut;
@@ -38,6 +41,7 @@ public class GiftPlanController {
     private final GiftHistoryService giftHistoryService;
     private final SurprisePlanService surprisePlanService;
     private final GiftRecommendationService giftRecommendationService;
+    private final GiftCardService giftCardService;
 
     // ===== Gift plan CRUD =====
     // NOTE: both endpoint styles kept after the Shahad merge; API design to be unified later.
@@ -210,6 +214,14 @@ public class GiftPlanController {
         return ResponseEntity.ok(giftMessageService.generate(userId, giftPlanId, request));
     }
 
+    // User writes their own message (no AI). Returns a giftMessageId usable when creating the gift card.
+    @PostMapping("/{giftPlanId}/messages")
+    public ResponseEntity<GiftMessageDTOOut> writeMessage(@RequestParam Long userId,
+                                                          @PathVariable Long giftPlanId,
+                                                          @Valid @RequestBody GiftMessageCreateDTOIn request) {
+        return ResponseEntity.ok(giftMessageService.createManual(userId, giftPlanId, request));
+    }
+
     @GetMapping("/{giftPlanId}/messages")
     public ResponseEntity<List<GiftMessageDTOOut>> listMessages(@RequestParam Long userId,
                                                                 @PathVariable Long giftPlanId) {
@@ -238,5 +250,13 @@ public class GiftPlanController {
     public ResponseEntity<SurprisePlanDTOOut> getSurprisePlan(@RequestParam Long userId,
                                                               @PathVariable Long giftPlanId) {
         return ResponseEntity.ok(surprisePlanService.getByGiftPlan(userId, giftPlanId));
+    }
+
+    @PostMapping("/{giftPlanId}/gift-card")
+    public ResponseEntity<GiftCardDTOOut> createGiftCard(@RequestParam Long userId,
+                                                         @PathVariable Long giftPlanId,
+                                                         @Valid @RequestBody GiftCardCreateDTOIn request) {
+        request.setGiftPlanId(giftPlanId);
+        return ResponseEntity.ok(giftCardService.create(userId, request));
     }
 }

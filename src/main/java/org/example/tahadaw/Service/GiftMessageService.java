@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.tahadaw.AI.AiJsonParser;
 import org.example.tahadaw.AI.AiService;
 import org.example.tahadaw.Api.ApiException;
+import org.example.tahadaw.DTO.IN.GiftMessageCreateDTOIn;
 import org.example.tahadaw.DTO.IN.GiftMessageGenerateDTOIn;
 import org.example.tahadaw.DTO.OUT.GiftMessageDTOOut;
 import org.example.tahadaw.Model.GiftIdeaRecommendation;
@@ -50,6 +51,38 @@ public class GiftMessageService {
         giftMessage.setTone(tone);
         giftMessage.setLanguage(language);
         giftMessage.setMessageText(messageText);
+        giftMessage.setCreatedAt(LocalDateTime.now());
+
+        return toDto(giftMessageRepository.save(giftMessage));
+    }
+
+    /**
+     * User writes their own message (no AI, no selected-gift-idea precondition).
+     * Produces a normal GiftMessage that can be attached to a gift card via giftMessageId.
+     */
+    @Transactional
+    public GiftMessageDTOOut createManual(Long userId, Long giftPlanId, GiftMessageCreateDTOIn request) {
+        GiftPlan giftPlan = requireOwnedGiftPlan(userId, giftPlanId);
+
+        String text = request.getMessageText() == null ? "" : request.getMessageText().trim();
+        if (text.isBlank()) {
+            throw new ApiException("Message text is required.");
+        }
+
+        String language = request.getLanguage() != null && !request.getLanguage().isBlank()
+                ? request.getLanguage().trim()
+                : (giftPlan.getLanguage() != null && !giftPlan.getLanguage().isBlank()
+                        ? giftPlan.getLanguage().trim()
+                        : "en");
+        String tone = request.getTone() != null && !request.getTone().isBlank()
+                ? request.getTone().trim()
+                : "custom";
+
+        GiftMessage giftMessage = new GiftMessage();
+        giftMessage.setGiftPlan(giftPlan);
+        giftMessage.setTone(tone);
+        giftMessage.setLanguage(language);
+        giftMessage.setMessageText(text);
         giftMessage.setCreatedAt(LocalDateTime.now());
 
         return toDto(giftMessageRepository.save(giftMessage));

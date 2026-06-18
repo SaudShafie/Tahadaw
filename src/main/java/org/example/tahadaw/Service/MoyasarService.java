@@ -123,4 +123,15 @@ public class MoyasarService {
         }
         return response.path("id").asString(null);
     }
+
+    /**
+     * 3-D Secure approval URL Moyasar returns for sandbox card payments (under source.transaction_url).
+     * The payer opens it to approve before the payment becomes "paid".
+     */
+    public static String readTransactionUrl(JsonNode response) {
+        if (response == null || response.isNull()) {
+            return null;
+        }
+        return response.path("source").path("transaction_url").asString(null);
+    }
 }

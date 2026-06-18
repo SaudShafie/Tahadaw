@@ -1,7 +1,6 @@
 package org.example.tahadaw.DTO.IN;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -11,7 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class GiftCardCreateDTOIn {
 
-    @NotNull
+    // Optional in the body: the /gift-plans/{giftPlanId}/gift-card endpoint supplies it from the path.
     private Long giftPlanId;
 
     private Long giftMessageId;
