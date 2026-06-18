@@ -38,4 +38,11 @@ public class RequiredQuestionController {
         requiredQuestionService.deleteRequiredQuestion(questionId);
         return ResponseEntity.status(200).body(new ApiResponse("Required question deleted successfully"));
     }
+
+    @PutMapping("/disable/{questionId}")
+    public ResponseEntity<?> disableRequiredQuestion(@PathVariable Long questionId){
+        requiredQuestionService.disableRequiredQuestion(questionId);
+        return ResponseEntity.status(200).body(new ApiResponse("Required question disabled successfully"));
+    }
+
 }

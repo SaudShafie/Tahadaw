@@ -31,10 +31,10 @@ public class Notification {
     @Column(columnDefinition = "text not null")
     private String message;
 
-        @Column(columnDefinition = "varchar(40) not null")
+    @Column(columnDefinition = "varchar(40) not null")
     private String type;
 
-        @Column(columnDefinition = "varchar(10) not null")
+    @Column(columnDefinition = "varchar(10) not null")
     private String status;
 
     @Column(updatable = false, columnDefinition = "datetime not null")

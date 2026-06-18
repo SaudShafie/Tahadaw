@@ -16,4 +16,5 @@ public class NotificationDTOOut {
     private String type;
     private String status;
     private LocalDateTime createdAt;
+
 }

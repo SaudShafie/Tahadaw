@@ -53,7 +53,9 @@ public class WhatsAppService {
         log.info("Twilio WhatsApp configured for account {} (from: {})", accountSidSuffix(), whatsappFrom);
     }
 
+
     public boolean sendWhatsApp(String toPhone, String message) {
+
         if (!isConfigured()) {
             log.error("Skipping WhatsApp send because Twilio is not configured");
             return false;
@@ -115,6 +117,7 @@ public class WhatsAppService {
         }
     }
 
+
     public boolean sendReminder(User user, Reminder reminder) {
         return sendWhatsApp(user.getPhoneNumber(), WhatsAppTemplates.buildReminder(user, reminder));
     }
@@ -144,19 +147,26 @@ public class WhatsAppService {
         return "Basic " + Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
     }
 
+    
     private String toWhatsAppFormat(String phone) {
         if (phone == null || phone.isBlank()) {
             return null;
         }
 
         String trimmed = phone.trim();
+
         if (trimmed.startsWith("whatsapp:")) {
             return trimmed;
         }
 
         String digits = trimmed.replaceAll("\\D", "");
+
         if (digits.isBlank()) {
             return null;
+        }
+
+        if (digits.startsWith("05") && digits.length() == 10) {
+            digits = "966" + digits.substring(1);
         }
 
         return "whatsapp:+" + digits;

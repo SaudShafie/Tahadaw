@@ -19,6 +19,7 @@ public class RequiredQuestionService {
     private final RequiredQuestionRepository requiredQuestionRepository;
     private final GiftPlanRepository giftPlanRepository;
 
+    //Bayan CRUD
     public void addRequiredQuestion(RequiredQuestion requiredQuestion) {
         requiredQuestion.setIsActive(true);
         requiredQuestion.setCreatedAt(LocalDateTime.now());
@@ -27,14 +28,12 @@ public class RequiredQuestionService {
     }
 
     public List<RequiredQuestion> getRequiredQuestions() {
-        return requiredQuestionRepository.findAll();
+        return requiredQuestionRepository.findAllByOrderByDisplayOrderAsc();
     }
 
     public void updateRequiredQuestion(Long questionId, RequiredQuestion requiredQuestion) {
-        RequiredQuestion oldQuestion = requiredQuestionRepository.findRequiredQuestionById(questionId).orElse(null);
-        if (oldQuestion == null) {
-            throw new ApiException("Required question not found");
-        }
+        RequiredQuestion oldQuestion = requiredQuestionRepository.findRequiredQuestionById(questionId)
+                .orElseThrow(() -> new ApiException("Required question not found"));
 
         oldQuestion.setQuestionText(requiredQuestion.getQuestionText());
         oldQuestion.setQuestionType(requiredQuestion.getQuestionType());
@@ -43,12 +42,24 @@ public class RequiredQuestionService {
         requiredQuestionRepository.save(oldQuestion);
     }
 
+
     public void deleteRequiredQuestion(Long questionId) {
-        RequiredQuestion requiredQuestion = requiredQuestionRepository.findRequiredQuestionById(questionId).orElse(null);
-        if (requiredQuestion == null) {
-            throw new ApiException("Required question not found");
-        }
+        RequiredQuestion requiredQuestion = requiredQuestionRepository.findRequiredQuestionById(questionId)
+                .orElseThrow(() -> new ApiException("Required question not found"));
+
         requiredQuestionRepository.delete(requiredQuestion);
+    }
+
+
+    //Bayan
+    public void disableRequiredQuestion(Long questionId){
+        RequiredQuestion requiredQuestion = requiredQuestionRepository.findRequiredQuestionById(questionId)
+                .orElseThrow(() -> new ApiException("Required question not found"));
+
+        requiredQuestion.setIsActive(false);
+        requiredQuestion.setUpdatedAt(LocalDateTime.now());
+
+        requiredQuestionRepository.save(requiredQuestion);
     }
 
     public List<RequiredQuestionDTOOut> listActiveForGiftPlan(Long userId, Long giftPlanId) {
@@ -79,4 +90,6 @@ public class RequiredQuestionService {
                 question.getDisplayOrder()
         );
     }
+
+
 }
