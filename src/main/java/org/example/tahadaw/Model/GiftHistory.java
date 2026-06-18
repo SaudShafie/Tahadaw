@@ -21,16 +21,16 @@ public class GiftHistory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     @JsonIgnore
     private User user;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "recipient_id", nullable = false)
     private Recipient recipient;
 
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "gift_idea_recommendation_id", unique = true)
     private GiftIdeaRecommendation giftIdeaRecommendation;
 
@@ -44,7 +44,7 @@ public class GiftHistory {
     private LocalDate giftDate;
 
     @Column(columnDefinition = "bigint")
-    private Long priceMinor;
+    private Double priceMinor;
 
     @Column(columnDefinition = "boolean")
     private Boolean wasGifted;

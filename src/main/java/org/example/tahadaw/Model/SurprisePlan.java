@@ -20,7 +20,7 @@ public class SurprisePlan {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "gift_plan_id", nullable = false, unique = true)
     @JsonIgnore
     private GiftPlan giftPlan;

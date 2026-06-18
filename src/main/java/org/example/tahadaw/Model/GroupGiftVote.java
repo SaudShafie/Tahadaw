@@ -21,16 +21,16 @@ public class GroupGiftVote {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_gift_id", nullable = false)
     @JsonIgnore
     private GroupGift groupGift;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_gift_option_id", nullable = false)
     private GroupGiftOption groupGiftOption;
 
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "invite_id", nullable = false, unique = true)
     @JsonIgnore
     private GroupGiftInvite invite;

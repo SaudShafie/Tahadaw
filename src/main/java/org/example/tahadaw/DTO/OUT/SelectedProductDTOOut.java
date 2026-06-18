@@ -11,7 +11,7 @@ public class SelectedProductDTOOut {
 
     private Long id;
     private String title;
-    private Long priceMinor;
+    private Double priceMinor;
     private String currency;
     private String imageUrl;
     private String productUrl;

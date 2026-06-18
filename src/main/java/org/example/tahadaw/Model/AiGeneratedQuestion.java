@@ -20,7 +20,7 @@ public class AiGeneratedQuestion {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "gift_plan_id", nullable = false)
     @JsonIgnore
     private GiftPlan giftPlan;
@@ -37,7 +37,7 @@ public class AiGeneratedQuestion {
     @Column(updatable = false, columnDefinition = "datetime not null")
     private LocalDateTime createdAt;
 
-    @OneToOne(mappedBy = "aiGeneratedQuestion", cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "aiGeneratedQuestion", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
     private AiQuestionAnswer answer;
 }

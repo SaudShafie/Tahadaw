@@ -22,12 +22,12 @@ public class GroupGift {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", nullable = false)
     @JsonIgnore
     private User owner;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "recipient_id", nullable = false)
     private Recipient recipient;
 
@@ -49,7 +49,7 @@ public class GroupGift {
     @Column(columnDefinition = "datetime")
     private LocalDateTime votingDeadline;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "winning_option_id")
     private GroupGiftOption winningOption;
 

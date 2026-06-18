@@ -19,7 +19,4 @@ public class AiGeneratedQuestionDTOIn {
     @NotEmpty(message = "Reason for question cannot be empty")
     private String reasonForQuestion;
 
-    @NotNull
-    @PositiveOrZero
-    private Integer displayOrder;
 }

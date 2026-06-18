@@ -2,6 +2,7 @@ package org.example.tahadaw.Controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.example.tahadaw.Api.ApiResponse;
 import org.example.tahadaw.DTO.IN.GiftMessageGenerateDTOIn;
 import org.example.tahadaw.DTO.IN.GiftPlanDTOIn;
 import org.example.tahadaw.DTO.IN.ProductSelectDTOIn;
@@ -12,20 +13,12 @@ import org.example.tahadaw.DTO.OUT.AiGeneratedQuestionDTOOut;
 import org.example.tahadaw.DTO.OUT.AiQuestionAnswerDTOOut;
 import org.example.tahadaw.DTO.OUT.GiftHistoryDTOOut;
 import org.example.tahadaw.DTO.OUT.GiftMessageDTOOut;
-import org.example.tahadaw.DTO.OUT.ProductSearchResultDTOOut;
 import org.example.tahadaw.DTO.OUT.RequiredQuestionAnswerDTOOut;
 import org.example.tahadaw.DTO.OUT.RequiredQuestionDTOOut;
 import org.example.tahadaw.DTO.OUT.SelectedProductDTOOut;
 import org.example.tahadaw.DTO.OUT.SurprisePlanDTOOut;
 import org.example.tahadaw.Model.GiftPlan;
-import org.example.tahadaw.Service.GiftHistoryService;
-import org.example.tahadaw.Service.GiftMessageService;
-import org.example.tahadaw.Service.AiQuestionService;
-import org.example.tahadaw.Service.GiftPlanService;
-import org.example.tahadaw.Service.ProductSearchService;
-import org.example.tahadaw.Service.SurprisePlanService;
-import org.example.tahadaw.Service.RequiredQuestionAnswerService;
-import org.example.tahadaw.Service.RequiredQuestionService;
+import org.example.tahadaw.Service.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -44,7 +37,12 @@ public class GiftPlanController {
     private final GiftMessageService giftMessageService;
     private final GiftHistoryService giftHistoryService;
     private final SurprisePlanService surprisePlanService;
+    private final GiftRecommendationService giftRecommendationService;
 
+    // ===== Gift plan CRUD =====
+    // NOTE: both endpoint styles kept after the Shahad merge; API design to be unified later.
+
+    // Saud style
     @PostMapping
     public ResponseEntity<GiftPlan> create(@RequestParam Long userId,
                                            @RequestParam Long recipientId,
@@ -52,14 +50,30 @@ public class GiftPlanController {
         return ResponseEntity.ok(giftPlanService.createGiftPlan(userId, recipientId, request));
     }
 
+    // Shahad style
+    @PostMapping("/create/{userId}/{recipientId}")
+    public ResponseEntity<?> createByPath(@PathVariable Long userId,
+                                          @PathVariable Long recipientId,
+                                          @RequestBody @Valid GiftPlanDTOIn request) {
+        giftPlanService.createGiftPlan(userId, recipientId, request);
+        return ResponseEntity.status(200).body(new ApiResponse("Gift plan created successfully."));
+    }
+
+    // Saud style
     @GetMapping
     public ResponseEntity<List<GiftPlan>> listMine(@RequestParam Long userId) {
         return ResponseEntity.ok(giftPlanService.listByUser(userId));
     }
 
+    // Shahad style
+    @GetMapping("/get-my-plans/{userId}")
+    public ResponseEntity<List<GiftPlan>> listMineByPath(@PathVariable Long userId) {
+        return ResponseEntity.ok(giftPlanService.listByUser(userId));
+    }
+
     @GetMapping("/{giftPlanId}")
     public ResponseEntity<GiftPlan> getOne(@RequestParam Long userId,
-                                          @PathVariable Long giftPlanId) {
+                                           @PathVariable Long giftPlanId) {
         return ResponseEntity.ok(giftPlanService.getGiftPlanById(userId, giftPlanId));
     }
 
@@ -77,9 +91,11 @@ public class GiftPlanController {
         return ResponseEntity.noContent().build();
     }
 
+    // ===== Required questions / answers =====
+
     @GetMapping("/{giftPlanId}/required-questions")
     public ResponseEntity<List<RequiredQuestionDTOOut>> listRequiredQuestions(@RequestParam Long userId,
-                                                                             @PathVariable Long giftPlanId) {
+                                                                              @PathVariable Long giftPlanId) {
         return ResponseEntity.ok(requiredQuestionService.listActiveForGiftPlan(userId, giftPlanId));
     }
 
@@ -97,18 +113,37 @@ public class GiftPlanController {
         return ResponseEntity.ok(requiredQuestionAnswerService.listByGiftPlan(userId, giftPlanId));
     }
 
+    // ===== AI questions / answers =====
+
+    // Saud style
     @PostMapping("/{giftPlanId}/ai-questions/generate")
-    public ResponseEntity<List<AiGeneratedQuestionDTOOut>> generateAiQuestions(@RequestParam Long userId,
-                                                                               @PathVariable Long giftPlanId) {
+    public ResponseEntity<?> generateAiQuestions(@RequestParam Long userId,
+                                                 @PathVariable Long giftPlanId) {
         return ResponseEntity.ok(aiQuestionService.generateQuestions(userId, giftPlanId));
     }
 
+    // Shahad style
+    @GetMapping("/ai-questions/generate/{userId}/{giftPlanId}")
+    public ResponseEntity<?> generateAiQuestionsByPath(@PathVariable Long userId,
+                                                       @PathVariable Long giftPlanId) {
+        return ResponseEntity.status(200).body(aiQuestionService.generateQuestions(userId, giftPlanId));
+    }
+
+    // Saud style
     @GetMapping("/{giftPlanId}/ai-questions")
     public ResponseEntity<List<AiGeneratedQuestionDTOOut>> listAiQuestions(@RequestParam Long userId,
                                                                            @PathVariable Long giftPlanId) {
         return ResponseEntity.ok(aiQuestionService.listQuestions(userId, giftPlanId));
     }
 
+    // Shahad style
+    @GetMapping("/get-ai-questions/{userId}/{giftPlanId}")
+    public ResponseEntity<List<AiGeneratedQuestionDTOOut>> listAiQuestionsByPath(@PathVariable Long userId,
+                                                                                 @PathVariable Long giftPlanId) {
+        return ResponseEntity.ok(aiQuestionService.listQuestions(userId, giftPlanId));
+    }
+
+    // Saud style
     @PostMapping("/{giftPlanId}/ai-answers")
     public ResponseEntity<List<AiQuestionAnswerDTOOut>> submitAiAnswers(
             @RequestParam Long userId,
@@ -117,16 +152,43 @@ public class GiftPlanController {
         return ResponseEntity.ok(aiQuestionService.submitAnswers(userId, giftPlanId, request));
     }
 
+    // Shahad style
+    @PostMapping("/ai-answers/{userId}/{giftPlanId}")
+    public ResponseEntity<List<AiQuestionAnswerDTOOut>> submitAiAnswersByPath(
+            @PathVariable Long userId,
+            @PathVariable Long giftPlanId,
+            @RequestBody @Valid AiQuestionAnswersSubmitDTOIn request) {
+        return ResponseEntity.status(200).body(aiQuestionService.submitAnswers(userId, giftPlanId, request));
+    }
+
+    // Saud style
     @GetMapping("/{giftPlanId}/ai-answers")
     public ResponseEntity<List<AiQuestionAnswerDTOOut>> listAiAnswers(@RequestParam Long userId,
                                                                       @PathVariable Long giftPlanId) {
         return ResponseEntity.ok(aiQuestionService.listAnswers(userId, giftPlanId));
     }
 
-    @PostMapping("/{giftPlanId}/products/search")
-    public ResponseEntity<List<ProductSearchResultDTOOut>> searchProducts(@PathVariable Long giftPlanId) {
-        return ResponseEntity.ok(productSearchService.searchProducts(giftPlanId));
+    // Shahad style
+    @GetMapping("/ai-answers/{userId}/{giftPlanId}")
+    public ResponseEntity<List<AiQuestionAnswerDTOOut>> listAiAnswersByPath(@PathVariable Long userId,
+                                                                            @PathVariable Long giftPlanId) {
+        return ResponseEntity.status(200).body(aiQuestionService.listAnswers(userId, giftPlanId));
     }
+
+    // ===== Gift idea recommendations (Shahad) =====
+
+    @PutMapping("/select-Recomendation/{userId}/{recommendationId}")
+    public ResponseEntity<?> selectRecommendation(@PathVariable Long userId, @PathVariable Long recommendationId) {
+        giftRecommendationService.selectRecommendation(userId, recommendationId);
+        return ResponseEntity.status(200).body(new ApiResponse("Recommendation selected successfully."));
+    }
+
+    @GetMapping("/get-rec/{userId}/{giftId}")
+    public ResponseEntity<?> getRecommendation(@PathVariable Long userId, @PathVariable Long giftId) {
+        return ResponseEntity.status(200).body(giftRecommendationService.generateGiftRecommendation(userId, giftId));
+    }
+
+    // ===== Products =====
 
     @PostMapping("/{giftPlanId}/products/select")
     public ResponseEntity<SelectedProductDTOOut> selectProduct(@PathVariable Long giftPlanId,
@@ -139,6 +201,8 @@ public class GiftPlanController {
         return ResponseEntity.ok(productSearchService.getSelectedProduct(giftPlanId));
     }
 
+    // ===== Messages =====
+
     @PostMapping("/{giftPlanId}/messages/generate")
     public ResponseEntity<GiftMessageDTOOut> generateMessage(@RequestParam Long userId,
                                                              @PathVariable Long giftPlanId,
@@ -148,15 +212,19 @@ public class GiftPlanController {
 
     @GetMapping("/{giftPlanId}/messages")
     public ResponseEntity<List<GiftMessageDTOOut>> listMessages(@RequestParam Long userId,
-                                                                  @PathVariable Long giftPlanId) {
+                                                                @PathVariable Long giftPlanId) {
         return ResponseEntity.ok(giftMessageService.listByGiftPlan(userId, giftPlanId));
     }
+
+    // ===== History =====
 
     @PostMapping("/{giftPlanId}/history")
     public ResponseEntity<GiftHistoryDTOOut> saveHistoryFromPlan(@RequestParam Long userId,
                                                                  @PathVariable Long giftPlanId) {
         return ResponseEntity.ok(giftHistoryService.saveFromPlan(userId, giftPlanId));
     }
+
+    // ===== Surprise plan (Saud) =====
 
     @PostMapping("/{giftPlanId}/surprise-plan/generate")
     public ResponseEntity<SurprisePlanDTOOut> generateSurprisePlan(

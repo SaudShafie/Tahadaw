@@ -19,14 +19,15 @@ public class GiftPlanDTOIn {
     @FutureOrPresent
     private LocalDate occasionDate;
 
-    @NotNull
+    //requeired Q
     @Positive
     private Long budgetMinor;
-
+    //set in service
     @NotEmpty(message = "Currency cannot be empty")
     @Size(min = 3, max = 3)
     private String currency;
 
+    //requiredQ
     private String preferredGiftStyle;
 
     @Size(max = 10)

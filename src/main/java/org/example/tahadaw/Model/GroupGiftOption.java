@@ -21,7 +21,7 @@ public class GroupGiftOption {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_gift_id", nullable = false)
     @JsonIgnore
     private GroupGift groupGift;

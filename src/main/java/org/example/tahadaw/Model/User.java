@@ -72,7 +72,7 @@ public class User {
     @JsonIgnore
     private Set<Payment> payments;
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
     private PremiumAccess premiumAccess;
 

@@ -20,18 +20,18 @@ public class SelectedProduct {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
-    @JoinColumn(name = "gift_idea_recommendation_id", nullable = false, unique = true)
+    @ManyToOne
+    @JoinColumn(name = "gift_idea_recommendation_id")
     @JsonIgnore
     private GiftIdeaRecommendation giftIdeaRecommendation;
 
     @Column(columnDefinition = "varchar(300) not null")
-    private String title;
+    private String productName;
 
-    @Column(columnDefinition = "bigint")
-    private Long priceMinor;
+    @Column(columnDefinition = "double")
+    private Double price;
 
-    @Column(columnDefinition = "varchar(3)")
+    @Column(columnDefinition = "varchar(255)")
     private String currency;
 
     @Column(columnDefinition = "varchar(2048)")
@@ -41,11 +41,14 @@ public class SelectedProduct {
     private String productUrl;
 
     @Column(columnDefinition = "varchar(100)")
-    private String sourceName;
+    private String StoreName;
 
     @Column(columnDefinition = "double")
     private Double rating;
 
-    @Column(updatable = false, columnDefinition = "datetime not null")
+    @Column(columnDefinition = "boolean not null")
+    private Boolean isSelected;
+
+    @Column(updatable = false, columnDefinition = "datetime")
     private LocalDateTime createdAt;
 }

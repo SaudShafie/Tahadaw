@@ -14,7 +14,7 @@ public class ProductSelectDTOIn {
     @NotBlank
     private String title;
 
-    private Long priceMinor;
+    private Double priceMinor;
 
     private String currency;
 
