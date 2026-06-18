@@ -15,5 +15,7 @@ public interface GiftIdeaRecommendationRepository extends JpaRepository<GiftIdea
 
     List<GiftIdeaRecommendation> findByGiftPlan(GiftPlan giftPlan);
 
+    GiftIdeaRecommendation findGiftIdeaRecommendationByGiftPlan(GiftPlan giftPlan);
+
     boolean existsByGiftPlan_IdAndIsSelectedTrueAndIdNot(Long giftPlanId, Long id);
 }

@@ -44,7 +44,7 @@ public class GiftHistory {
     private LocalDate giftDate;
 
     @Column(columnDefinition = "bigint")
-    private Long priceMinor;
+    private Double priceMinor;
 
     @Column(columnDefinition = "boolean")
     private Boolean wasGifted;

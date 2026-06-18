@@ -1,5 +1,6 @@
 package org.example.tahadaw.Repository;
 
+import org.example.tahadaw.Model.GiftPlan;
 import org.example.tahadaw.Model.RequiredQuestionAnswer;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -12,5 +13,7 @@ public interface RequiredQuestionAnswerRepository extends JpaRepository<Required
 
     List<RequiredQuestionAnswer> findByGiftPlan_IdOrderByCreatedAtAsc(Long giftPlanId);
 
+    List<RequiredQuestionAnswer> findRequiredQuestionAnswerByGiftPlan(GiftPlan giftPlan);
+    
     Optional<RequiredQuestionAnswer> findByGiftPlan_IdAndRequiredQuestion_Id(Long giftPlanId, Long requiredQuestionId);
 }

@@ -17,7 +17,7 @@ public class GiftHistoryDTOOut {
     private String giftName;
     private String occasionType;
     private LocalDate giftDate;
-    private Long priceMinor;
+    private Double priceMinor;
     private Boolean wasGifted;
     private Integer userRating;
     private String notes;

@@ -44,9 +44,10 @@ public class GiftHistoryService {
             throw new ApiException("Gift history already saved for this gift plan.");
         }
 
-        SelectedProduct selectedProduct = selectedIdea.getSelectedProduct();
-        String giftName = selectedProduct != null ? selectedProduct.getTitle() : selectedIdea.getTitle();
-        Long priceMinor = selectedProduct != null ? selectedProduct.getPriceMinor() : null;
+
+        SelectedProduct selectedProduct = selectedIdea.getSelectedProducts().stream().findFirst().orElse(null);;
+        String giftName = selectedProduct != null ? selectedProduct.getProductName() : selectedIdea.getProductName();
+        Double priceMinor = selectedProduct != null ? selectedProduct.getPrice() : null;
 
         GiftHistory history = new GiftHistory();
         history.setUser(giftPlan.getUser());

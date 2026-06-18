@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.tahadaw.Api.ApiResponse;
 import org.example.tahadaw.DTO.IN.AiGeneratedQuestionDTOIn;
 import org.example.tahadaw.Service.AiQuestionService;
+import org.example.tahadaw.Service.GiftRecommendationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,9 +14,10 @@ import org.springframework.web.bind.annotation.*;
 public class AiQuestionController {
 
     private final AiQuestionService aiQuestionService;
+    private  final GiftRecommendationService giftRecommendationService;
 
     // CREATE
-    @PostMapping("/gift-plan/{giftPlanId}")
+    @PostMapping("/create/{giftPlanId}")
     public ResponseEntity<?> createAiQuestion(@PathVariable Long giftPlanId,
                                                  @RequestBody @Valid AiGeneratedQuestionDTOIn request) {
         aiQuestionService.createAiQuestion(giftPlanId, request);
@@ -48,4 +50,7 @@ public class AiQuestionController {
         aiQuestionService.deleteAiQuestion(id);
         return ResponseEntity.status(200).body(new ApiResponse("Ai question deleted successfully."));
     }
+
+
+
 }

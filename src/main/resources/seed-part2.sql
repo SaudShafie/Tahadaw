@@ -32,6 +32,6 @@ VALUES (
 -- Admin required questions (Flow 4 — also used when testing via API)
 INSERT INTO required_question (id, question_text, question_type, is_active, display_order, created_at, updated_at)
 VALUES
-    (1, 'How close is your relationship with this person?', 'TEXT', 1, 1, NOW(), NOW()),
-    (2, 'What gift style fits this occasion best?', 'SINGLE_CHOICE', 1, 2, NOW(), NOW()),
-    (3, 'What is the gift budget mindset?', 'TEXT', 1, 3, NOW(), NOW());
+    (3, 'How close is your relationship with this person?', 'TEXT', 1,  NOW(), NOW()),
+    (1, 'What gift style fits this occasion best?', 'TEXT', 1,  NOW(), NOW()),
+    (1, 'What is the gift budget mindset?', 'TEXT', 1,  NOW(), NOW());
