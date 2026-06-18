@@ -13,4 +13,6 @@ public interface RequiredQuestionRepository extends JpaRepository<RequiredQuesti
     Optional<RequiredQuestion> findRequiredQuestionById(Long id);
 
     List<RequiredQuestion> findByIsActiveTrueOrderByDisplayOrderAsc();
+
+    List<RequiredQuestion> findAllByOrderByDisplayOrderAsc();
 }

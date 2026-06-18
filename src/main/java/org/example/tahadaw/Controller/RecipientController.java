@@ -31,15 +31,15 @@ public class RecipientController {
         return ResponseEntity.status(200).body(recipientService.getRecipients());
     }
 
-    @PutMapping("/update/{recipientId}")
-    public ResponseEntity<?> updateRecipient(@PathVariable Long recipientId, @RequestBody @Valid Recipient recipient) {
-        recipientService.updateRecipient(recipientId, recipient);
+    @PutMapping("/update/{userId}/{recipientId}")
+    public ResponseEntity<?> updateRecipient(@PathVariable Long userId , @PathVariable Long recipientId, @RequestBody @Valid Recipient recipient) {
+        recipientService.updateRecipient(userId,recipientId, recipient);
         return ResponseEntity.status(200).body(new ApiResponse("Recipient updated successfully"));
     }
 
-    @DeleteMapping("/delete/{recipientId}")
-    public ResponseEntity<?> deleteRecipient(@PathVariable Long recipientId) {
-        recipientService.deleteRecipient(recipientId);
+    @DeleteMapping("/delete/{userId}/{recipientId}")
+    public ResponseEntity<?> deleteRecipient(@PathVariable Long userId , @PathVariable Long recipientId) {
+        recipientService.deleteRecipient(userId,recipientId);
         return ResponseEntity.status(200).body(new ApiResponse("Recipient deleted successfully"));
     }
 
@@ -47,5 +47,17 @@ public class RecipientController {
     public ResponseEntity<List<GiftHistoryDTOOut>> listGiftHistory(@RequestParam Long userId,
                                                                     @PathVariable Long recipientId) {
         return ResponseEntity.ok(giftHistoryService.listByRecipient(userId, recipientId));
+    }
+
+    @GetMapping("/get-by-user-id/{userId}")
+    public ResponseEntity<?> getRecipientsByUserId(@PathVariable Long userId){
+        return ResponseEntity.status(200).body(recipientService.getRecipientsByUserId(userId));
+    }
+
+    @GetMapping("/get/{userId}/{recipientId}")
+    public ResponseEntity<?> getRecipientByIdAndUserId(@PathVariable Long userId,
+                                                       @PathVariable Long recipientId) {
+
+        return ResponseEntity.status(200).body(recipientService.getRecipientByIdAndUserId(userId, recipientId));
     }
 }

@@ -24,7 +24,7 @@ public class RequiredQuestion {
     @Column(columnDefinition = "text not null")
     private String questionText;
 
-        @Column(columnDefinition = "varchar(20) not null")
+    @Column(columnDefinition = "varchar(20) not null")
     private String questionType;
 
     @Column(columnDefinition = "boolean not null")
