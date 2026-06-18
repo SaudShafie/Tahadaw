@@ -95,7 +95,7 @@ public class GiftMessageService {
                                String language,
                                String dialect) {
         Recipient recipient = giftPlan.getRecipient();
-        SelectedProduct selectedProduct = selectedIdea.getSelectedProduct();
+        SelectedProduct selectedProduct = selectedIdea.getSelectedProducts().stream().findFirst().orElse(null);;
 
         StringBuilder context = new StringBuilder();
         context.append("Recipient name: ").append(recipient.getName()).append('\n');
@@ -115,12 +115,12 @@ public class GiftMessageService {
         if (giftPlan.getOccasionDate() != null) {
             context.append("Occasion date: ").append(giftPlan.getOccasionDate()).append('\n');
         }
-        context.append("Selected gift idea: ").append(selectedIdea.getTitle()).append('\n');
+        context.append("Selected gift idea: ").append(selectedIdea.getProductName()).append('\n');
         if (selectedIdea.getReason() != null) {
             context.append("Why this gift: ").append(selectedIdea.getReason()).append('\n');
         }
         if (selectedProduct != null) {
-            context.append("Selected product: ").append(selectedProduct.getTitle()).append('\n');
+            context.append("Selected product: ").append(selectedProduct.getProductName()).append('\n');
         }
 
         String dialectLine = dialect != null && !dialect.isBlank()

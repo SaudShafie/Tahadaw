@@ -24,6 +24,7 @@ import tools.jackson.databind.JsonNode;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -49,7 +50,6 @@ public class AiQuestionService {
         AiGeneratedQuestion aiGeneratedQuestion = new AiGeneratedQuestion();
         aiGeneratedQuestion.setQuestionText(request.getQuestionText());
         aiGeneratedQuestion.setReasonForQuestion(request.getReasonForQuestion());
-        aiGeneratedQuestion.setDisplayOrder(request.getDisplayOrder());
         aiGeneratedQuestion.setGiftPlan(giftPlan);
 
         aiGeneratedQuestionRepository.save(aiGeneratedQuestion);
@@ -63,7 +63,6 @@ public class AiQuestionService {
         AiGeneratedQuestion oldAiGeneratedQuestion = getAiQuestionById(id);
         oldAiGeneratedQuestion.setQuestionText(request.getQuestionText());
         oldAiGeneratedQuestion.setReasonForQuestion(request.getReasonForQuestion());
-        oldAiGeneratedQuestion.setDisplayOrder(request.getDisplayOrder());
         aiGeneratedQuestionRepository.save(oldAiGeneratedQuestion);
     }
 
@@ -80,34 +79,39 @@ public class AiQuestionService {
         return aiGeneratedQuestion;
     }
 
-    // gift-plan flow
+    // shahad-gift-plan flow
 
     @Transactional
-    public List<AiGeneratedQuestionDTOOut> generateQuestions(Long userId, Long giftPlanId) {
+    public List<AiGeneratedQuestion> generateQuestions(Long userId, Long giftPlanId) {
         GiftPlan giftPlan = requireOwnedGiftPlan(userId, giftPlanId);
 
-        if (giftPlan.getStatus() != "REQUIRED_QUESTIONS_ANSWERED") {
-            throw new ApiException("Answer all required questions before generating AI follow-up questions.");
-        }
         if (aiGeneratedQuestionRepository.existsByGiftPlan_Id(giftPlanId)) {
             throw new ApiException("AI follow-up questions already generated for this gift plan.");
         }
 
-        String prompt = buildGeneratePrompt(giftPlan);
+        String prompt = buildPrompt(giftPlan);
+        //get the questions from the ai service as json node
         JsonNode root = AiJsonParser.parseObject(aiService.ask(prompt));
         JsonNode questionsNode = root.get("questions");
+
+        //check if the questions node is null or empty
         if (questionsNode == null || !questionsNode.isArray() || questionsNode.isEmpty()) {
             throw new ApiException("AI did not return any follow-up questions.");
         }
 
         LocalDateTime now = LocalDateTime.now();
+
+        List<AiGeneratedQuestion> aiGeneratedQuestion = new ArrayList<>();
+        int order = 0;
         for (JsonNode questionNode : questionsNode) {
             AiGeneratedQuestion question = new AiGeneratedQuestion();
             question.setGiftPlan(giftPlan);
             question.setQuestionText(AiJsonParser.requireText(questionNode, "questionText"));
             question.setReasonForQuestion(AiJsonParser.requireText(questionNode, "reasonForQuestion"));
-            question.setDisplayOrder(AiJsonParser.requireInt(questionNode, "displayOrder", 1, 20));
             question.setCreatedAt(now);
+            question.setDisplayOrder(order++);
+
+            aiGeneratedQuestion.add(question);
             aiGeneratedQuestionRepository.save(question);
         }
 
@@ -115,7 +119,7 @@ public class AiQuestionService {
         giftPlan.setUpdatedAt(now);
         giftPlanRepository.save(giftPlan);
 
-        return listQuestions(userId, giftPlanId);
+        return aiGeneratedQuestion;
     }
 
     public List<AiGeneratedQuestionDTOOut> listQuestions(Long userId, Long giftPlanId) {
@@ -131,9 +135,6 @@ public class AiQuestionService {
                                                     AiQuestionAnswersSubmitDTOIn request) {
         GiftPlan giftPlan = requireOwnedGiftPlan(userId, giftPlanId);
 
-        if (giftPlan.getStatus() != "AI_QUESTIONS_GENERATED") {
-            throw new ApiException("Generate AI follow-up questions before submitting answers.");
-        }
 
         List<AiGeneratedQuestion> planQuestions =
                 aiGeneratedQuestionRepository.findByGiftPlan_IdOrderByDisplayOrderAsc(giftPlanId);
@@ -203,10 +204,12 @@ public class AiQuestionService {
         return giftPlan;
     }
 
-    private String buildGeneratePrompt(GiftPlan giftPlan) {
+    //Shahad
+    public String buildPrompt(GiftPlan giftPlan) {
+        //bring the recipient and required answers
         Recipient recipient = giftPlan.getRecipient();
         List<RequiredQuestionAnswer> requiredAnswers =
-                requiredQuestionAnswerRepository.findByGiftPlan_IdOrderByCreatedAtAsc(giftPlan.getId());
+                requiredQuestionAnswerRepository.findRequiredQuestionAnswerByGiftPlan(giftPlan);
 
         StringBuilder context = new StringBuilder();
         context.append("Recipient name: ").append(recipient.getName()).append('\n');
@@ -253,14 +256,13 @@ public class AiQuestionService {
         }
 
         return """
-                Generate tailored follow-up gift questions for the context below.
+                Generate follow-up gift questions for the context below.
                 Return JSON only in this exact shape:
                 {
                   "questions": [
                     {
                       "questionText": "string",
-                      "reasonForQuestion": "string",
-                      "displayOrder": 1
+                      "reasonForQuestion": "string"
                     }
                   ]
                 }
@@ -269,7 +271,7 @@ public class AiQuestionService {
                 - Generate 3 to 5 questions
                 - Questions must help choose a better gift for this recipient and occasion
                 - Avoid generic questions
-                - displayOrder starts at 1 and increases by 1
+                - the response should be in Arabic language
 
                 Context:
                 %s

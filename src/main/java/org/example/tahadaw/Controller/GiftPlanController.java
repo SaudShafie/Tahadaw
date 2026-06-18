@@ -2,6 +2,7 @@ package org.example.tahadaw.Controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.example.tahadaw.Api.ApiResponse;
 import org.example.tahadaw.DTO.IN.GiftMessageGenerateDTOIn;
 import org.example.tahadaw.DTO.IN.GiftPlanDTOIn;
 import org.example.tahadaw.DTO.IN.ProductSelectDTOIn;
@@ -16,13 +17,7 @@ import org.example.tahadaw.DTO.OUT.RequiredQuestionAnswerDTOOut;
 import org.example.tahadaw.DTO.OUT.RequiredQuestionDTOOut;
 import org.example.tahadaw.DTO.OUT.SelectedProductDTOOut;
 import org.example.tahadaw.Model.GiftPlan;
-import org.example.tahadaw.Service.GiftHistoryService;
-import org.example.tahadaw.Service.GiftMessageService;
-import org.example.tahadaw.Service.AiQuestionService;
-import org.example.tahadaw.Service.GiftPlanService;
-import org.example.tahadaw.Service.ProductSearchService;
-import org.example.tahadaw.Service.RequiredQuestionAnswerService;
-import org.example.tahadaw.Service.RequiredQuestionService;
+import org.example.tahadaw.Service.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,16 +35,19 @@ public class GiftPlanController {
     private final ProductSearchService productSearchService;
     private final GiftMessageService giftMessageService;
     private final GiftHistoryService giftHistoryService;
+    private final GiftRecommendationService giftRecommendationService;
 
-    @PostMapping
-    public ResponseEntity<GiftPlan> create(@RequestParam Long userId,
-                                           @RequestParam Long recipientId,
+    //shahad-CRUD
+    @PostMapping("/create/{userId}/{recipientId}")
+    public ResponseEntity<?> create(@PathVariable Long userId,
+                                           @PathVariable Long recipientId,
                                            @RequestBody @Valid GiftPlanDTOIn request) {
-        return ResponseEntity.ok(giftPlanService.createGiftPlan(userId, recipientId, request));
+        giftPlanService.createGiftPlan(userId, recipientId, request);
+        return ResponseEntity.status(200).body(new ApiResponse("Gift plan created successfully."));
     }
 
-    @GetMapping
-    public ResponseEntity<List<GiftPlan>> listMine(@RequestParam Long userId) {
+    @GetMapping("/get-my-plans/{userId}")
+    public ResponseEntity<List<GiftPlan>> listMine(@PathVariable Long userId) {
         return ResponseEntity.ok(giftPlanService.listByUser(userId));
     }
 
@@ -93,36 +91,36 @@ public class GiftPlanController {
         return ResponseEntity.ok(requiredQuestionAnswerService.listByGiftPlan(userId, giftPlanId));
     }
 
-    @PostMapping("/{giftPlanId}/ai-questions/generate")
-    public ResponseEntity<List<AiGeneratedQuestionDTOOut>> generateAiQuestions(@RequestParam Long userId,
-                                                                               @PathVariable Long giftPlanId) {
-        return ResponseEntity.ok(aiQuestionService.generateQuestions(userId, giftPlanId));
+    //shahad
+    @GetMapping("/ai-questions/generate/{userId}/{giftPlanId}")
+    public ResponseEntity<?> generateAiQuestions(@PathVariable Long userId,@PathVariable Long giftPlanId) {
+        return ResponseEntity.status(200).body(aiQuestionService.generateQuestions(userId, giftPlanId));
     }
 
-    @GetMapping("/{giftPlanId}/ai-questions")
-    public ResponseEntity<List<AiGeneratedQuestionDTOOut>> listAiQuestions(@RequestParam Long userId,
+    @GetMapping("/get-ai-questions/{userId}/{giftPlanId}")
+    public ResponseEntity<List<AiGeneratedQuestionDTOOut>> listAiQuestions(@PathVariable Long userId,
                                                                            @PathVariable Long giftPlanId) {
         return ResponseEntity.ok(aiQuestionService.listQuestions(userId, giftPlanId));
     }
 
-    @PostMapping("/{giftPlanId}/ai-answers")
+    @PostMapping("/ai-answers/{userId}/{giftPlanId}")
     public ResponseEntity<List<AiQuestionAnswerDTOOut>> submitAiAnswers(
-            @RequestParam Long userId,
+            @PathVariable Long userId,
             @PathVariable Long giftPlanId,
             @RequestBody @Valid AiQuestionAnswersSubmitDTOIn request) {
-        return ResponseEntity.ok(aiQuestionService.submitAnswers(userId, giftPlanId, request));
+        return ResponseEntity.status(200).body(aiQuestionService.submitAnswers(userId, giftPlanId, request));
     }
 
-    @GetMapping("/{giftPlanId}/ai-answers")
-    public ResponseEntity<List<AiQuestionAnswerDTOOut>> listAiAnswers(@RequestParam Long userId,
+    @GetMapping("/ai-answers/{userId}/{giftPlanId}")
+    public ResponseEntity<List<AiQuestionAnswerDTOOut>> listAiAnswers(@PathVariable Long userId,
                                                                       @PathVariable Long giftPlanId) {
-        return ResponseEntity.ok(aiQuestionService.listAnswers(userId, giftPlanId));
+        return ResponseEntity.status(200).body(aiQuestionService.listAnswers(userId, giftPlanId));
     }
 
-    @PostMapping("/{giftPlanId}/products/search")
-    public ResponseEntity<List<ProductSearchResultDTOOut>> searchProducts(@PathVariable Long giftPlanId) {
-        return ResponseEntity.ok(productSearchService.searchProducts(giftPlanId));
-    }
+//    @PostMapping("/{giftPlanId}/products/search")
+//    public ResponseEntity<List<ProductSearchResultDTOOut>> searchProducts(@PathVariable Long giftPlanId) {
+//        return ResponseEntity.ok(productSearchService.searchProducts(giftPlanId));
+//    }
 
     @PostMapping("/{giftPlanId}/products/select")
     public ResponseEntity<SelectedProductDTOOut> selectProduct(@PathVariable Long giftPlanId,
@@ -152,5 +150,16 @@ public class GiftPlanController {
     public ResponseEntity<GiftHistoryDTOOut> saveHistoryFromPlan(@RequestParam Long userId,
                                                                  @PathVariable Long giftPlanId) {
         return ResponseEntity.ok(giftHistoryService.saveFromPlan(userId, giftPlanId));
+    }
+
+    @PutMapping("/select-Recomendation/{userId}/{recommendationId}")
+    public ResponseEntity<?> selectRecommendation(@PathVariable Long userId, @PathVariable Long recommendationId){
+        giftRecommendationService.selectRecommendation(userId, recommendationId);
+        return ResponseEntity.status(200).body(new ApiResponse("Recommendation selected successfully."));
+    }
+    @GetMapping("/get-rec/{userId}/{giftId}")
+    public ResponseEntity<?> getRecommendation(@PathVariable Long userId,@PathVariable Long giftId) {
+
+        return ResponseEntity.status(200).body(giftRecommendationService.generateGiftRecommendation(userId,giftId));
     }
 }

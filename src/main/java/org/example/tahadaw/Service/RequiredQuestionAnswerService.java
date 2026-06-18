@@ -32,15 +32,12 @@ public class RequiredQuestionAnswerService {
                                                             RequiredQuestionAnswersSubmitDTOIn request) {
         GiftPlan giftPlan = requireOwnedGiftPlan(userId, giftPlanId);
 
-        if (giftPlan.getStatus() != "CREATED") {
-            throw new ApiException("Required answers can only be submitted while the gift plan is in CREATED status.");
-        }
-
         List<RequiredQuestion> activeQuestions = requiredQuestionRepository.findByIsActiveTrueOrderByDisplayOrderAsc();
         if (activeQuestions.isEmpty()) {
             throw new ApiException("No active required questions are configured.");
         }
 
+        //using hashset to remove duplicate answers
         Set<Long> submittedQuestionIds = new HashSet<>();
         for (RequiredQuestionAnswerItemDTOIn item : request.getAnswers()) {
             if (!submittedQuestionIds.add(item.getRequiredQuestionId())) {
