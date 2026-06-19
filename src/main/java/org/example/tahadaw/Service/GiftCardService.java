@@ -49,8 +49,11 @@ public class GiftCardService {
         GiftCard giftCard = new GiftCard();
         giftCard.setUser(user);
         giftCard.setGiftPlan(giftPlan);
-        giftCard.setRecipientName(request.getRecipientName());
-        giftCard.setSenderName(request.getSenderName());
+        // Use the real recipient/sender names from the system; the request fields are only a fallback.
+        giftCard.setRecipientName(firstNonBlank(
+                giftPlan.getRecipient() != null ? giftPlan.getRecipient().getName() : null,
+                request.getRecipientName()));
+        giftCard.setSenderName(firstNonBlank(user.getFullName(), request.getSenderName()));
         giftCard.setCardSize(request.getCardSize());
         giftCard.setLinkType(request.getLinkType());
         giftCard.setLinkUrl(request.getLinkUrl());
