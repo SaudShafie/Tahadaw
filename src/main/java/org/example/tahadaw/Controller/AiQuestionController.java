@@ -3,10 +3,15 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.tahadaw.Api.ApiResponse;
 import org.example.tahadaw.DTO.IN.AiGeneratedQuestionDTOIn;
+import org.example.tahadaw.DTO.IN.AiQuestionAnswersSubmitDTOIn;
+import org.example.tahadaw.DTO.OUT.AiGeneratedQuestionDTOOut;
+import org.example.tahadaw.DTO.OUT.AiQuestionAnswerDTOOut;
 import org.example.tahadaw.Service.AiQuestionService;
 import org.example.tahadaw.Service.GiftRecommendationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/ai-questions")
@@ -49,6 +54,20 @@ public class AiQuestionController {
     public ResponseEntity<?> deleteAiQuestion(@PathVariable Long id) {
         aiQuestionService.deleteAiQuestion(id);
         return ResponseEntity.status(200).body(new ApiResponse("Ai question deleted successfully."));
+    }
+
+    // Shahad
+    @GetMapping("/ai-questions/generate/{userId}/{giftPlanId}")
+    public ResponseEntity<?> generateAiQuestions(@PathVariable Long userId,
+                                                       @PathVariable Long giftPlanId) {
+        return ResponseEntity.status(200).body(aiQuestionService.generateQuestions(userId, giftPlanId));
+    }
+
+    // Shahad
+    @GetMapping("/get-ai-questions/{userId}/{giftPlanId}")
+    public ResponseEntity<List<AiGeneratedQuestionDTOOut>> listAiQuestions(@PathVariable Long userId,
+                                                                                 @PathVariable Long giftPlanId) {
+        return ResponseEntity.ok(aiQuestionService.listQuestions(userId, giftPlanId));
     }
 
 

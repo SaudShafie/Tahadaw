@@ -25,6 +25,7 @@ import java.net.http.HttpResponse;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -103,50 +104,92 @@ public class ProductSearchService {
 //        }
 //    }
 
+//    @Transactional
+//    public SelectedProductDTOOut selectProduct(Long giftPlanId, ProductSelectDTOIn request) {
+//        GiftPlan giftPlan = giftPlanRepository.findGiftPlanById(giftPlanId)
+//                .orElseThrow(() -> new ApiException("Gift plan not found."));
+//
+//        GiftIdeaRecommendation selectedIdea = giftIdeaRecommendationRepository
+//                .findByGiftPlanAndIsSelectedTrue(giftPlan)
+//                .orElseThrow(() -> new ApiException("Select one AI gift idea before selecting a product."));
+//
+//        if (selectedIdea.getSelectedProducts().isEmpty()) {
+//            throw new ApiException("A product is already selected for this gift plan.");
+//        }
+//        if (selectedIdea.getSelectedProducts().size() > 1) {
+//            throw new ApiException("You can only select 1 product for this gift plan.");
+//        }
+//
+//        SelectedProduct selectedProduct = new SelectedProduct();
+//        selectedProduct.setGiftIdeaRecommendation(selectedIdea);
+//        selectedProduct.setProductName(request.getTitle());
+//        selectedProduct.setPrice(request.getPriceMinor());
+//        selectedProduct.setCurrency(request.getCurrency() != null ? request.getCurrency() : giftPlan.getCurrency());
+//        selectedProduct.setImageUrl(request.getImageUrl());
+//        selectedProduct.setProductUrl(request.getProductUrl());
+//        selectedProduct.setStoreName(request.getSourceName());
+//        selectedProduct.setRating(request.getRating());
+//        selectedProduct.setCreatedAt(LocalDateTime.now());
+//        selectedProduct = selectedProductRepository.save(selectedProduct);
+//
+//        giftPlan.setStatus("PRODUCT_SELECTED");
+//        giftPlan.setUpdatedAt(LocalDateTime.now());
+//        giftPlanRepository.save(giftPlan);
+//
+//        return toSelectedProductDto(selectedProduct);
+//    }
+
     @Transactional
-    public SelectedProductDTOOut selectProduct(Long giftPlanId, ProductSelectDTOIn request) {
-        GiftPlan giftPlan = giftPlanRepository.findGiftPlanById(giftPlanId)
-                .orElseThrow(() -> new ApiException("Gift plan not found."));
-
-        GiftIdeaRecommendation selectedIdea = giftIdeaRecommendationRepository
-                .findByGiftPlanAndIsSelectedTrue(giftPlan)
-                .orElseThrow(() -> new ApiException("Select one AI gift idea before selecting a product."));
-
-        if (selectedIdea.getSelectedProducts().isEmpty()) {
-            throw new ApiException("A product is already selected for this gift plan.");
-        }
-        if (selectedIdea.getSelectedProducts().size() > 1) {
-            throw new ApiException("You can only select 1 product for this gift plan.");
+    public void selectProduct(Long userId, Long productId) {
+        SelectedProduct selectedProduct=selectedProductRepository.findSelectedProductById(productId);
+        if(selectedProduct==null){
+            throw new ApiException("Product not found");
         }
 
-        SelectedProduct selectedProduct = new SelectedProduct();
-        selectedProduct.setGiftIdeaRecommendation(selectedIdea);
-        selectedProduct.setProductName(request.getTitle());
-        selectedProduct.setPrice(request.getPriceMinor());
-        selectedProduct.setCurrency(request.getCurrency() != null ? request.getCurrency() : giftPlan.getCurrency());
-        selectedProduct.setImageUrl(request.getImageUrl());
-        selectedProduct.setProductUrl(request.getProductUrl());
-        selectedProduct.setStoreName(request.getSourceName());
-        selectedProduct.setRating(request.getRating());
-        selectedProduct.setCreatedAt(LocalDateTime.now());
-        selectedProduct = selectedProductRepository.save(selectedProduct);
+        GiftIdeaRecommendation recommendation = giftIdeaRecommendationRepository.findGiftIdeaRecommendationById(selectedProduct.getGiftIdeaRecommendation().getId())
+                .orElseThrow(() -> new ApiException("Gift idea recommendation not found."));
 
-        giftPlan.setStatus("PRODUCT_SELECTED");
+        GiftPlan giftPlan = recommendation.getGiftPlan();
+        if (!giftPlan.getUser().getId().equals(userId)) {
+            throw new ApiException("Gift plan is not yours");
+        }
+        List<SelectedProduct> selectedIdea = selectedProductRepository
+                .findSelectedProductByGiftIdeaRecommendationAndIsSelectedTrue(recommendation);
+
+
+        if (!selectedIdea.isEmpty()) {
+            throw new ApiException("You already selected a product for this gift plan.");
+        }
+
+        List<SelectedProduct> productIdeas = selectedProductRepository
+                .findSelectedProductByGiftIdeaRecommendation(recommendation);
+
+        if (productIdeas.isEmpty()) {
+            throw new ApiException("You have to generate a product recommendation before selecting a product.");
+        }
+
+
+        giftPlan.setSelectedProduct(selectedProduct);
+        selectedProduct.setIsSelected(true);
+        selectedProduct.setGiftPlan(giftPlan);
+        selectedProductRepository.save(selectedProduct);
+        selectedProductRepository.deleteSelectedProductsByGiftIdeaRecommendation(recommendation);
+        if (giftPlan.getStatus() == "GIFT_IDEA_SELECTED") {
+            giftPlan.setStatus("PRODUCT_SELECTED");
+        }
         giftPlan.setUpdatedAt(LocalDateTime.now());
         giftPlanRepository.save(giftPlan);
-
-        return toSelectedProductDto(selectedProduct);
     }
+
+
 
     public SelectedProductDTOOut getSelectedProduct(Long giftPlanId) {
         GiftPlan giftPlan = giftPlanRepository.findGiftPlanById(giftPlanId)
                 .orElseThrow(() -> new ApiException("Gift plan not found."));
 
-        GiftIdeaRecommendation selectedIdea = giftIdeaRecommendationRepository
-                .findByGiftPlanAndIsSelectedTrue(giftPlan)
-                .orElseThrow(() -> new ApiException("No selected gift idea for this gift plan."));
+        SelectedProduct selectedProduct = selectedProductRepository
+                .findSelectedProductByGiftPlan(giftPlan);
 
-        SelectedProduct selectedProduct = selectedIdea.getSelectedProducts().stream().findFirst().orElse(null);;
         if (selectedProduct == null) {
             throw new ApiException("No product selected yet for this gift plan.");
         }

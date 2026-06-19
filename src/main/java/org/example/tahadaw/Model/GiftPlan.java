@@ -65,6 +65,10 @@ public class GiftPlan {
     @JoinColumn(name = "selected_gift_idea_id")
     private GiftIdeaRecommendation selectedGiftIdea;
 
+    @OneToOne(mappedBy = "giftPlan", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinColumn(name = "selected_product_id")
+    private SelectedProduct selectedProduct;
+
     @OneToMany(mappedBy = "giftPlan", cascade = CascadeType.ALL)
     @JsonIgnore
     private Set<RequiredQuestionAnswer> requiredQuestionAnswers;
