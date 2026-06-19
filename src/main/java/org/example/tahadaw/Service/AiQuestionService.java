@@ -133,70 +133,7 @@ public class AiQuestionService {
                 .toList();
     }
 
-    @Transactional
-    public List<AiQuestionAnswerDTOOut> submitAnswers(Long userId, Long giftPlanId,
-                                                    AiQuestionAnswersSubmitDTOIn request) {
-        GiftPlan giftPlan = requireOwnedGiftPlan(userId, giftPlanId);
 
-        // if (!"AI_QUESTIONS_GENERATED".equals(giftPlan.getStatus())) {
-        //     throw new ApiException("Generate AI follow-up questions before submitting answers.");
-        // }
-
-        List<AiGeneratedQuestion> planQuestions =
-                aiGeneratedQuestionRepository.findByGiftPlan_IdOrderByDisplayOrderAsc(giftPlanId);
-        if (planQuestions.isEmpty()) {
-            throw new ApiException("No AI follow-up questions found for this gift plan.");
-        }
-
-        Set<Long> submittedQuestionIds = new HashSet<>();
-        for (AiQuestionAnswerItemDTOIn item : request.getAnswers()) {
-            if (!submittedQuestionIds.add(item.getAiGeneratedQuestionId())) {
-                throw new ApiException("Duplicate answer for AI question id " + item.getAiGeneratedQuestionId() + ".");
-            }
-        }
-
-        for (AiGeneratedQuestion question : planQuestions) {
-            if (!submittedQuestionIds.contains(question.getId())) {
-                throw new ApiException("Answer required for AI question: " + question.getQuestionText());
-            }
-        }
-
-        LocalDate today = LocalDate.now();
-        LocalDateTime now = LocalDateTime.now();
-        for (AiQuestionAnswerItemDTOIn item : request.getAnswers()) {
-            AiGeneratedQuestion question = aiGeneratedQuestionRepository
-                    .findAiGeneratedQuestionById(item.getAiGeneratedQuestionId())
-                    .orElseThrow(() -> new ApiException("AI question not found."));
-            if (!question.getGiftPlan().getId().equals(giftPlanId)) {
-                throw new ApiException("AI question does not belong to this gift plan.");
-            }
-
-            AiQuestionAnswer answer = aiQuestionAnswerRepository
-                    .findByAiGeneratedQuestion_Id(question.getId())
-                    .orElseGet(AiQuestionAnswer::new);
-
-            answer.setAiGeneratedQuestion(question);
-            answer.setAnswerText(item.getAnswerText());
-            if (answer.getCreatedAt() == null) {
-                answer.setCreatedAt(today);
-            }
-            aiQuestionAnswerRepository.save(answer);
-        }
-
-        giftPlan.setStatus("AI_QUESTIONS_ANSWERED");
-        giftPlan.setUpdatedAt(now);
-        giftPlanRepository.save(giftPlan);
-
-        return listAnswers(userId, giftPlanId);
-    }
-
-    public List<AiQuestionAnswerDTOOut> listAnswers(Long userId, Long giftPlanId) {
-        requireOwnedGiftPlan(userId, giftPlanId);
-
-        return aiQuestionAnswerRepository.findByAiGeneratedQuestion_GiftPlan_IdOrderByCreatedAtAsc(giftPlanId).stream()
-                .map(this::toAnswerDto)
-                .toList();
-    }
 
     private GiftPlan requireOwnedGiftPlan(Long userId, Long giftPlanId) {
         GiftPlan giftPlan = giftPlanRepository.findGiftPlanById(giftPlanId)
@@ -262,7 +199,7 @@ public class AiQuestionService {
         }
 
         return """
-                Generate follow-up gift questions for the context below.
+                Generate follow-up gift questions for the context below helping the user choose a better gift for the recipient.
                 Return JSON only in this exact shape:
                 {
                   "questions": [

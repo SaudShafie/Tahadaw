@@ -395,7 +395,7 @@
         },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"giftMessageId\": {{giftMessageId}},\n  \"recipientName\": \"سارة\",\n  \"senderName\": \"أحمد\",\n  \"cardSize\": \"MEDIUM\",\n  \"linkType\": \"VIDEO\",\n  \"linkUrl\": \"{{youtubeUrl}}\",\n  \"sentToEmail\": \"{{cardEmail}}\"\n}"
+          "raw": "{\n  \"giftMessageId\": {{giftMessageId}},\n  \"cardSize\": \"MEDIUM\",\n  \"linkType\": \"VIDEO\",\n  \"linkUrl\": \"{{youtubeUrl}}\",\n  \"sentToEmail\": \"{{cardEmail}}\"\n}"
         },
         "description": "Builds the card using the AI-generated message (giftMessageId). Auto-sends to sentToEmail/owner. To use the default message instead, remove the giftMessageId line."
       }
