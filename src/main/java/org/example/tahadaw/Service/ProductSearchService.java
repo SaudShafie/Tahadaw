@@ -140,7 +140,7 @@ public class ProductSearchService {
 //    }
 
     @Transactional
-    public void selectProduct(Long userId, Long productId) {
+    public void selectProduct(Long userId ,Long productId) {
         SelectedProduct selectedProduct=selectedProductRepository.findSelectedProductById(productId);
         if(selectedProduct==null){
             throw new ApiException("Product not found");
