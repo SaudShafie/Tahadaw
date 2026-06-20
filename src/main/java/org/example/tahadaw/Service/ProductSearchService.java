@@ -171,6 +171,9 @@ public class ProductSearchService {
 
         giftPlan.setSelectedProduct(selectedProduct);
         selectedProduct.setIsSelected(true);
+        if (selectedProduct.getCreatedAt() == null) {
+            selectedProduct.setCreatedAt(LocalDateTime.now());
+        }
         selectedProduct.setGiftPlan(giftPlan);
         selectedProduct.setUser(giftPlan.getUser());
         selectedProduct.setRecipient(giftPlan.getRecipient());
