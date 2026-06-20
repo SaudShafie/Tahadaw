@@ -46,75 +46,55 @@ public class GiftPlanController {
     // ===== Gift plan CRUD =====
     // NOTE: both endpoint styles kept after the Shahad merge; API design to be unified later.
 
-    // Saud style
-    @PostMapping
-    public ResponseEntity<GiftPlan> create(@RequestParam Long userId,
-                                           @RequestParam Long recipientId,
-                                           @RequestBody @Valid GiftPlanDTOIn request) {
-        return ResponseEntity.ok(giftPlanService.createGiftPlan(userId, recipientId, request));
-    }
 
-    // Shahad style
+    // Shahad
     @PostMapping("/create/{userId}/{recipientId}")
-    public ResponseEntity<?> createByPath(@PathVariable Long userId,
+    public ResponseEntity<?> create(@PathVariable Long userId,
                                           @PathVariable Long recipientId,
                                           @RequestBody @Valid GiftPlanDTOIn request) {
         giftPlanService.createGiftPlan(userId, recipientId, request);
         return ResponseEntity.status(200).body(new ApiResponse("Gift plan created successfully."));
     }
 
-    // Saud style
-    @GetMapping
-    public ResponseEntity<List<GiftPlan>> listMine(@RequestParam Long userId) {
-        return ResponseEntity.ok(giftPlanService.listByUser(userId));
-    }
 
-    // Shahad style
+    // Shahad
     @GetMapping("/get-my-plans/{userId}")
-    public ResponseEntity<List<GiftPlan>> listMineByPath(@PathVariable Long userId) {
+    public ResponseEntity<List<GiftPlan>> getMyPlans(@PathVariable Long userId) {
         return ResponseEntity.ok(giftPlanService.listByUser(userId));
     }
 
-    @GetMapping("/{giftPlanId}")
-    public ResponseEntity<GiftPlan> getOne(@RequestParam Long userId,
+    @GetMapping("/get-plan-by-id/{userId}/{giftPlanId}")
+    public ResponseEntity<GiftPlan> getPlanById(@PathVariable Long userId,
                                            @PathVariable Long giftPlanId) {
         return ResponseEntity.ok(giftPlanService.getGiftPlanById(userId, giftPlanId));
     }
 
-    @PutMapping("/{giftPlanId}")
-    public ResponseEntity<GiftPlan> update(@RequestParam Long userId,
+    @PutMapping("/update/{userId}/{giftPlanId}")
+    public ResponseEntity<GiftPlan> update(@PathVariable Long userId,
                                            @PathVariable Long giftPlanId,
                                            @RequestBody @Valid GiftPlanDTOIn request) {
         return ResponseEntity.ok(giftPlanService.updateGiftPlan(userId, giftPlanId, request));
     }
 
-    @DeleteMapping("/{giftPlanId}")
-    public ResponseEntity<Void> delete(@RequestParam Long userId,
+    @DeleteMapping("/delete/{userId}/{giftPlanId}")
+    public ResponseEntity<Void> delete(@PathVariable Long userId,
                                        @PathVariable Long giftPlanId) {
         giftPlanService.deleteGiftPlan(userId, giftPlanId);
         return ResponseEntity.noContent().build();
     }
 
-    // ===== Required questions / answers =====
-
-    @GetMapping("/{giftPlanId}/required-questions")
-    public ResponseEntity<List<RequiredQuestionDTOOut>> listRequiredQuestions(@RequestParam Long userId,
-                                                                              @PathVariable Long giftPlanId) {
-        return ResponseEntity.ok(requiredQuestionService.listActiveForGiftPlan(userId, giftPlanId));
+    @GetMapping("/get-active-plans/{userid}")
+    public ResponseEntity<List<GiftPlan>> getActivePlans(@PathVariable Long userid) {
+        return ResponseEntity.status(200).body(giftPlanService.listAllActiveGiftPlans(userid));
+    }
+    @GetMapping("/get-previous-plans/{userid}")
+    public ResponseEntity<List<GiftPlan>> getPreviousPlans(@PathVariable Long userid) {
+        return ResponseEntity.status(200).body(giftPlanService.listAllPreviousGiftPlans(userid));
     }
 
-    @PostMapping("/{giftPlanId}/required-answers")
-    public ResponseEntity<List<RequiredQuestionAnswerDTOOut>> submitRequiredAnswers(
-            @RequestParam Long userId,
-            @PathVariable Long giftPlanId,
-            @RequestBody @Valid RequiredQuestionAnswersSubmitDTOIn request) {
-        return ResponseEntity.ok(requiredQuestionAnswerService.submitAnswers(userId, giftPlanId, request));
-    }
-
-    @GetMapping("/{giftPlanId}/required-answers")
-    public ResponseEntity<List<RequiredQuestionAnswerDTOOut>> listRequiredAnswers(@RequestParam Long userId,
-                                                                                  @PathVariable Long giftPlanId) {
-        return ResponseEntity.ok(requiredQuestionAnswerService.listByGiftPlan(userId, giftPlanId));
+    @GetMapping("/get-gift-plan-Summery/{userId}/{giftPlanId}")
+    public ResponseEntity<?> getGiftPlanSummery(@PathVariable Long userId,@PathVariable Long giftPlanId) {
+        return ResponseEntity.status(200).body(giftPlanService.getGiftPlanSummary(userId, giftPlanId));
     }
 
 
