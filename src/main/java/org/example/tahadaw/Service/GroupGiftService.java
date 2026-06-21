@@ -9,6 +9,8 @@ import org.example.tahadaw.DTO.IN.GroupGiftUpdateDTOIn;
 import org.example.tahadaw.DTO.OUT.GroupGiftDTOOut;
 import org.example.tahadaw.Model.*;
 import org.example.tahadaw.Repository.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.webmvc.autoconfigure.WebMvcProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,8 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class GroupGiftService {
+
+    private static final Logger log = LoggerFactory.getLogger(GroupGiftService.class);
 
     private final GroupGiftRepository groupGiftRepository;
     private final UserRepository userRepository;
@@ -349,7 +353,14 @@ public class GroupGiftService {
 
             GroupGiftInvite savedInvite = groupGiftInviteRepository.save(currentInvite);
 
-            emailService.sendGroupGiftInviteEmail(savedInvite, groupGift);
+            // Email delivery must not abort the whole batch: one invitee's failure
+            // (bad address, SMTP hiccup) should not block invites to the rest.
+            try {
+                emailService.sendGroupGiftInviteEmail(savedInvite, groupGift);
+            } catch (Exception e) {
+                log.warn("Failed to send group-gift invite email to {} (invite {}): {}",
+                        savedInvite.getInviteeEmail(), savedInvite.getId(), e.getMessage());
+            }
 
             result.add(savedInvite);
         }

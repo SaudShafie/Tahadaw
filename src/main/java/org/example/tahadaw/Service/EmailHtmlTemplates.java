@@ -154,13 +154,13 @@ public final class EmailHtmlTemplates {
     }
 
     public static String buildReminderHtml(User user, Reminder reminder) {
-        return """
-                <html><body>
-                <h2>%s — Gift Reminder</h2>
-                <p>Hello %s,</p>
-                <p>%s</p>
-                </body></html>
-                """.formatted(SYSTEM_NAME, user.getFullName(), reminder.getMessage());
+        String inner = """
+                <tr><td style="padding:30px 32px 24px;">
+                  <p style="font-size:16px;color:%s;margin:0 0 12px;">Hello <strong>%s</strong>,</p>
+                  <p style="font-size:15px;color:%s;line-height:1.6;margin:0;">%s</p>
+                </td></tr>
+                """.formatted(NAVY, escape(user.getFullName()), TEXT, escape(reminder.getMessage()));
+        return styledShell("ltr", "GIFT REMINDER", inner);
     }
 
     public static String buildReminderPlainText(User user, Reminder reminder) {
@@ -169,21 +169,63 @@ public final class EmailHtmlTemplates {
                 + reminder.getMessage();
     }
 
-    public static String buildGroupGiftInviteHtml(GroupGiftInvite invite, GroupGift groupGift, String voteUrl) {
-        return """
-                <html><body>
-                <h2>%s — Group Gift Vote</h2>
-                <p>Hello %s,</p>
-                <p>You are invited to vote on a group gift: <strong>%s</strong>.</p>
-                <p><a href="%s">Vote here</a></p>
-                </body></html>
-                """.formatted(SYSTEM_NAME, invite.getInviteeName(), groupGift.getTitle(), voteUrl);
+    public static String buildGroupGiftInviteHtml(GroupGiftInvite invite, GroupGift groupGift) {
+        String inner = """
+                <tr><td style="padding:30px 32px 24px;text-align:right;">
+                  <p style="font-size:16px;color:%s;margin:0 0 12px;">مرحبًا <strong>%s</strong>،</p>
+                  <p style="font-size:15px;color:%s;line-height:1.8;margin:0 0 12px;">
+                    تمت دعوتك للمشاركة في التصويت على هدية جماعية عبر منصة <strong>تهادوا</strong>.
+                  </p>
+                  <p style="font-size:15px;color:%s;line-height:1.8;margin:0 0 6px;"><strong>عنوان التصويت:</strong> %s</p>
+                  <p style="font-size:15px;color:%s;line-height:1.8;margin:0 0 16px;"><strong>المستلم:</strong> %s</p>
+                  <p style="font-size:14px;color:%s;line-height:1.8;margin:0;">
+                    مشاركتك تساعد في اختيار الهدية الأنسب من بين الخيارات المقترحة. يرجى الدخول إلى النظام
+                    والاطلاع على خيارات الهدايا، ثم اختيار الهدية الأنسب في نظرك.
+                  </p>
+                </td></tr>
+                """.formatted(
+                        NAVY, escape(invite.getInviteeName()),
+                        TEXT, TEXT, escape(groupGift.getTitle()),
+                        TEXT, escape(groupGift.getRecipient().getName()), TEXT);
+        return styledShell("rtl", "دعوة للتصويت", inner);
     }
 
-    public static String buildGroupGiftInvitePlainText(GroupGiftInvite invite, GroupGift groupGift, String voteUrl) {
-        return SYSTEM_NAME + " — Group Gift Vote\n\n"
-                + "Hello " + invite.getInviteeName() + ",\n\n"
-                + "You are invited to vote on a group gift: " + groupGift.getTitle() + ".\n\n"
-                + "Vote here: " + voteUrl;
+    public static String buildGroupGiftInvitePlainText(GroupGiftInvite invite, GroupGift groupGift) {
+        return SYSTEM_NAME + " — دعوة للتصويت على هدية جماعية\n\n"
+                + "مرحبًا " + invite.getInviteeName() + "،\n\n"
+                + "تمت دعوتك للمشاركة في التصويت على هدية جماعية عبر منصة تهادوا.\n\n"
+                + "عنوان التصويت: " + groupGift.getTitle() + "\n"
+                + "المستلم: " + groupGift.getRecipient().getName() + "\n\n"
+                + "يرجى الدخول إلى النظام والاطلاع على خيارات الهدايا، ثم اختيار الهدية الأنسب في نظرك.";
+    }
+
+    /**
+     * Shared branded wrapper (navy header + gold eyebrow + white card + footer) used by the
+     * lighter-weight emails so every message has the same look as the gift-card / receipt emails.
+     *
+     * @param dir     "ltr" or "rtl"
+     * @param eyebrow small uppercase label under the TAHADAW wordmark
+     * @param innerHtml one or more {@code <tr><td>...</td></tr>} body rows
+     */
+    private static String styledShell(String dir, String eyebrow, String innerHtml) {
+        return """
+                <!doctype html>
+                <html dir="%s"><body style="margin:0;padding:0;background:%s;">
+                <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:%s;padding:24px 0;font-family:'Segoe UI',Arial,sans-serif;">
+                  <tr><td align="center">
+                    <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,0.08);">
+                      <tr><td style="background:%s;padding:28px 32px;text-align:center;">
+                        <div style="color:#ffffff;font-size:24px;font-weight:700;letter-spacing:3px;">TAHADAW</div>
+                        <div style="color:%s;font-size:12px;margin-top:8px;letter-spacing:2px;">%s</div>
+                      </td></tr>
+                      %s
+                      <tr><td style="background:%s;padding:18px 32px;text-align:center;color:%s;font-size:12px;">
+                        Sent with care by Tahadaw
+                      </td></tr>
+                    </table>
+                  </td></tr>
+                </table>
+                </body></html>
+                """.formatted(dir, BG, BG, NAVY, GOLD, eyebrow, innerHtml, BG, MUTED);
     }
 }
