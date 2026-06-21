@@ -35,9 +35,12 @@ public class SearchApiService {
 
 
 
-    public List<SelectedProduct> search(Long giftPlanId) {
+    public List<SelectedProduct> search(Long userId, Long giftPlanId) {
         GiftPlan giftPlan = giftPlanRepository.findGiftPlanById(giftPlanId)
                 .orElseThrow(() -> new ApiException("Gift plan not found."));
+        if (!giftPlan.getUser().getId().equals(userId)) {
+            throw new ApiException("Gift plan not found.");
+        }
 
         GiftIdeaRecommendation selectedIdea = giftIdeaRecommendationRepository
                 .findByGiftPlanAndIsSelectedTrue(giftPlan)
@@ -75,7 +78,7 @@ public class SearchApiService {
                 .toList();
         List<SelectedProduct> selectedProduct = new ArrayList<>();
 
-        System.out.println(dtos);
+
         for (ShoppingResult dto : dtos) {
             SelectedProduct selectedProduct1=toDto(dto);
             selectedProduct.add(selectedProduct1);

@@ -6,9 +6,11 @@ import org.example.tahadaw.DTO.IN.MoyasarCardPaymentDTOIn;
 import org.example.tahadaw.DTO.IN.MoyasarWebhookDTOIn;
 import org.example.tahadaw.DTO.OUT.PaymentDTOOut;
 import org.example.tahadaw.DTO.OUT.PremiumStatusDTOOut;
+import org.example.tahadaw.Model.User;
 import org.example.tahadaw.Service.PaymentService;
 import org.example.tahadaw.Service.PremiumService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,18 +24,19 @@ public class PaymentController {
     private final PremiumService premiumService;
 
     @PostMapping("/payments/premium")
-    public ResponseEntity<PaymentDTOOut> processPremiumPayment(@Valid @RequestBody MoyasarCardPaymentDTOIn request) {
-        return ResponseEntity.ok(paymentService.processPremiumPayment(request));
+    public ResponseEntity<PaymentDTOOut> processPremiumPayment(@AuthenticationPrincipal User user,
+                                                               @Valid @RequestBody MoyasarCardPaymentDTOIn request) {
+        return ResponseEntity.ok(paymentService.processPremiumPayment(user.getId(), request));
     }
 
     @GetMapping("/payments/my")
-    public ResponseEntity<List<PaymentDTOOut>> getMyPayments(@RequestParam Long userId) {
-        return ResponseEntity.ok(paymentService.getMyPayments(userId));
+    public ResponseEntity<List<PaymentDTOOut>> getMyPayments(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(paymentService.getMyPayments(user.getId()));
     }
 
     @GetMapping("/premium/status")
-    public ResponseEntity<PremiumStatusDTOOut> getPremiumStatus(@RequestParam Long userId) {
-        return ResponseEntity.ok(premiumService.getPremiumStatus(userId));
+    public ResponseEntity<PremiumStatusDTOOut> getPremiumStatus(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(premiumService.getPremiumStatus(user.getId()));
     }
 
     @PostMapping("/payments/webhook/moyasar")

@@ -5,8 +5,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.tahadaw.Api.ApiResponse;
 import org.example.tahadaw.Model.GiftQualityCheck;
+import org.example.tahadaw.Model.User;
 import org.example.tahadaw.Service.GiftQualityCheckService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -17,27 +19,27 @@ public class GiftQualityCheckController {
 
     private final GiftQualityCheckService giftQualityCheckService;
 
-    @PostMapping("/add/{userId}/{recipientId}")
-    public ResponseEntity<?> runGiftQualityCheck(@PathVariable Long userId,
+    @PostMapping("/add/{recipientId}")
+    public ResponseEntity<?> runGiftQualityCheck(@AuthenticationPrincipal User user,
                                                  @PathVariable Long recipientId,
                                                  @RequestBody @Valid GiftQualityCheck giftQualityCheck) {
 
-        giftQualityCheckService.runGiftQualityCheck(userId, recipientId, giftQualityCheck);
+        giftQualityCheckService.runGiftQualityCheck(user.getId(), recipientId, giftQualityCheck);
         return ResponseEntity.status(200).body(new ApiResponse("Gift quality check completed successfully"));
     }
 
 
     @GetMapping("/recipients/{recipientId}")
     public ResponseEntity<?> getGiftQualityChecksByRecipient(@PathVariable Long recipientId,
-                                                             @RequestParam Long userId) {
+                                                             @AuthenticationPrincipal User user) {
 
-        return ResponseEntity.status(200).body(giftQualityCheckService.getGiftQualityChecksByRecipient(userId, recipientId));
+        return ResponseEntity.status(200).body(giftQualityCheckService.getGiftQualityChecksByRecipient(user.getId(), recipientId));
     }
 
     @GetMapping("/get-one/{checkId}")
     public ResponseEntity<?> getGiftQualityCheckById(@PathVariable Long checkId,
-                                                     @RequestParam Long userId) {
+                                                     @AuthenticationPrincipal User user) {
 
-        return ResponseEntity.status(200).body(giftQualityCheckService.getGiftQualityCheckById(userId, checkId));
+        return ResponseEntity.status(200).body(giftQualityCheckService.getGiftQualityCheckById(user.getId(), checkId));
     }
 }

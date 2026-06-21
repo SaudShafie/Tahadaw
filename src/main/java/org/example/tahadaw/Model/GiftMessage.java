@@ -25,6 +25,12 @@ public class GiftMessage {
     @JsonIgnore
     private User user;
 
+    // Optional: set when the message was generated from a gift plan. Null for standalone messages.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "gift_plan_id")
+    @JsonIgnore
+    private GiftPlan giftPlan;
+
     @Column(columnDefinition = "varchar(50)")
     private String tone;
 

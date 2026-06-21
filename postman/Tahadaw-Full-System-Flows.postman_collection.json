@@ -1,0 +1,3993 @@
+{
+  "info": {
+    "name": "Tahadaw — Full System Flows (Realistic Arabic Data)",
+    "_postman_id": "0a4e1c7e-4f3a-4c2b-9b21-2a1d7f6e5c41",
+    "description": "End-to-end tests for every Tahadaw flow, grouped by the responsible developer, plus a final \"Extra - Out-of-Flow Endpoints\" folder for everything else.\n\nSECURITY: the backend uses HTTP Basic auth (no JWT). The signed-in user comes from the Spring Security principal — endpoints no longer take a userId param.\n- Collection auth = Basic {{username}}/{{password}}.\n- Flow 1 registers Saud and stores his credentials, so every later request authenticates as him.\n- Public (no auth): POST /users/register, /api/v1/public/** (group-gift voting), the Moyasar webhook and moyasar-status callback.\n- ADMIN-only: /users/get, required-questions add|update|delete|disable|get, ai-questions CRUD, ai-answers CRUD, required-questions-answer CRUD.\n  Registration only creates USER accounts, so admin requests use Basic {{adminUsername}}/{{adminPassword}} and are tolerant. To exercise them, promote a user to ADMIN in the DB and set those two variables.\n\nDevelopers:\n- Bayan  : Account/Users, Recipients, Admin Required Questions, Quality Check, Reminders, Notifications, Group Gifts.\n- Shahad : Gift Plans, Required Q&A, AI Q&A, Recommendations, Product Search.\n- Saud   : Premium Payment, Gift Messages, Gift Card, Surprise Plan, Gift History.\n\nTest data: owner/sender = Saud (سعود), recipient = Ammar (عمار), email = swwdswwd124@gmail.com, phone = 0502427714. Free text is in Arabic.\n\nRun order is dependency-safe top to bottom. IDs are captured automatically between requests.\n\nManual / external notes:\n- Premium activation needs the Moyasar 3-D Secure step (open transactionUrl logged in flow 4). Until done, Gift Card + Surprise Plan answer 403 (expected).\n- Product Search needs searchapi.api.key; AI flows need openai.api.key; emails need spring.mail.* configured.\n- The \"Account Deletion\" folder is destructive (self-delete) — run it last.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "basic",
+    "basic": [
+      {
+        "key": "username",
+        "value": "{{username}}",
+        "type": "string"
+      },
+      {
+        "key": "password",
+        "value": "{{password}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Bayan - 1. Account & User Setup",
+      "description": "Dev: Bayan. Registers the test account (Saud) and stores his credentials in {{username}}/{{password}} so every later request authenticates via HTTP Basic. Username/email use a per-run stamp so reruns never collide; mail still lands in swwdswwd124@gmail.com via the +alias.",
+      "item": [
+        {
+          "name": "Register User (Saud)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/users/register",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"saud_{{stamp}}\",\n  \"password\": \"Saud!2026pass\",\n  \"fullName\": \"سعود\",\n  \"email\": \"swwdswwd124+{{stamp}}@gmail.com\",\n  \"phoneNumber\": \"0502427714\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Public endpoint (permitAll). Registration always assigns role USER."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('stamp', String(Date.now()));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));",
+                  "// Persist Basic-auth credentials for all later requests.",
+                  "pm.collectionVariables.set('username', 'saud_' + pm.collectionVariables.get('stamp'));",
+                  "pm.collectionVariables.set('password', 'Saud!2026pass');",
+                  "console.log('Logged in as', pm.collectionVariables.get('username'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Authentication (whoami via recipients)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/recipients/get",
+            "description": "First authenticated call. Confirms HTTP Basic login works before the rest of the run."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update User (still authenticated)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/users/update",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"saud_{{stamp}}\",\n  \"password\": \"Saud!2026pass\",\n  \"fullName\": \"سعود الشافعي\",\n  \"email\": \"swwdswwd124+{{stamp}}@gmail.com\",\n  \"phoneNumber\": \"0502427714\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Updates the signed-in user (principal). Keeps the same username/password so credentials stay valid."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Premium Status (should be false)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/premium/status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bayan - 2. Recipients",
+      "description": "Dev: Bayan. Flow 2 — recipient profiles for the signed-in user. Creates the recipient Ammar (عمار).",
+      "item": [
+        {
+          "name": "Add Recipient (Ammar)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/recipients/add",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"عمار\",\n  \"relationship\": \"أخ\",\n  \"age\": 24,\n  \"gender\": \"ذكر\",\n  \"interests\": \"القهوة المختصة، التقنية، السيارات\",\n  \"hobbies\": \"تحضير القهوة، الألعاب الإلكترونية\",\n  \"favoriteColors\": \"الأسود، الكحلي\",\n  \"favoriteBrands\": \"آبل، سوني\",\n  \"dislikes\": \"الملابس التقليدية، الأكواب العادية\",\n  \"personalityStyle\": \"عملي وبسيط\",\n  \"sizeInfo\": \"مقاس L\",\n  \"notes\": \"يفضّل الهدايا العملية والمفيدة\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List My Recipients (capture recipientId)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/recipients/get-by-user-id"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));",
+                  "var arr = pm.response.json();",
+                  "var pick = (arr || []).filter(function (x) { return x.name === 'عمار'; });",
+                  "var target = pick.length ? pick.reduce(function (a,b){return a.id>b.id?a:b;}) : (Array.isArray(arr)&&arr.length ? arr.reduce(function(a,b){return a.id>b.id?a:b;}) : null);",
+                  "if (target) { pm.collectionVariables.set('recipientId', target.id); console.log('recipientId =', target.id); }",
+                  "pm.test('recipientId captured', function () { pm.expect(pm.collectionVariables.get('recipientId')).to.not.be.undefined; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Recipient By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/recipients/get/{{recipientId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Recipient",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/recipients/update/{{recipientId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"عمار\",\n  \"relationship\": \"أخ\",\n  \"age\": 25,\n  \"gender\": \"ذكر\",\n  \"interests\": \"القهوة المختصة، التصوير، التقنية\",\n  \"hobbies\": \"تحضير القهوة، التصوير الفوتوغرافي\",\n  \"favoriteColors\": \"الأسود، الرمادي\",\n  \"favoriteBrands\": \"آبل، كانون\",\n  \"dislikes\": \"الأكواب العادية\",\n  \"personalityStyle\": \"عملي ويحب الجودة\",\n  \"sizeInfo\": \"مقاس L\",\n  \"notes\": \"تحدّث مؤخراً عن رغبته بكاميرا احترافية\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Recipient Gift History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/recipients/{{recipientId}}/gift-history"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bayan - 3. Admin: Required Questions",
+      "description": "Dev: Bayan. Flow 17 — ADMIN seeds the fixed required questions (POST/GET /required-questions are ADMIN-only). Requests use Basic {{adminUsername}}/{{adminPassword}} and are tolerant: set those to a real ADMIN account to actually seed. If questions were seeded before, the user-facing list in flow 6 still works.",
+      "item": [
+        {
+          "name": "Add Required Question 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/required-questions/add",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{adminUsername}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{adminPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionText\": \"ما مدى قربك من الشخص؟\",\n  \"questionType\": \"TEXT\",\n  \"isActive\": true,\n  \"displayOrder\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Required question 1 added (admin)\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Required question 1 added (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Required Question 2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/required-questions/add",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{adminUsername}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{adminPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionText\": \"ما الميزانية التقريبية للهدية؟\",\n  \"questionType\": \"TEXT\",\n  \"isActive\": true,\n  \"displayOrder\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Required question 2 added (admin)\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Required question 2 added (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List All Required Questions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/required-questions/get",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{adminUsername}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{adminPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Required questions listed (admin)\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Required questions listed (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Saud - 4. Premium Payment (Moyasar)",
+      "description": "Dev: Saud. Flow 11 — one-time premium payment via Moyasar sandbox for the signed-in user (no userId in the body — taken from the principal). NOTE: activation needs the manual 3-D Secure step (open transactionUrl in a browser and approve). Until then the user stays non-premium, so premium-gated flows below answer with 403 — expected in an automated run.",
+      "item": [
+        {
+          "name": "Pay Premium (test card)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/payments/premium",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Saud Ammar\",\n  \"number\": \"4111111111111111\",\n  \"cvc\": \"123\",\n  \"month\": \"12\",\n  \"year\": \"30\",\n  \"callbackUrl\": \"https://example.com/callback\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Premium payment accepted by Moyasar\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Premium payment accepted by Moyasar -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});",
+                  "try { var b = pm.response.json(); if (b && b.transactionId) pm.collectionVariables.set('moyasarId', b.transactionId); if (b && b.transactionUrl) console.log('OPEN THIS 3DS URL TO ACTIVATE PREMIUM:', b.transactionUrl); } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh Moyasar Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/payments/moyasar-status/{{moyasarId}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Moyasar status refreshed\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Moyasar status refreshed -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My Payments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/payments/my"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Premium Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/premium/status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Shahad - 5. Gift Plans",
+      "description": "Dev: Shahad. Flow 3 — gift plan CRUD for the signed-in user. Create returns a message only, so we read the list to capture the new giftPlanId.",
+      "item": [
+        {
+          "name": "Create Gift Plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/gift-plans/create/{{recipientId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"occasionType\": \"GRADUATION\",\n  \"occasionDate\": \"{{occasionDate}}\",\n  \"budget\": 500,\n  \"currency\": \"SAR\",\n  \"preferredGiftStyle\": \"PRACTICAL\",\n  \"language\": \"ar\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List My Plans (capture giftPlanId)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/gift-plans/get-my-plans"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));",
+                  "var arr = pm.response.json();",
+                  "if (Array.isArray(arr) && arr.length) {",
+                  "  var max = arr.reduce(function (a, b) { return (a.id > b.id ? a : b); });",
+                  "  pm.collectionVariables.set(\"giftPlanId\", max.id);",
+                  "  console.log(\"giftPlanId =\", max.id);",
+                  "}",
+                  "pm.test(\"giftPlanId captured\", function () { pm.expect(pm.collectionVariables.get(\"giftPlanId\")).to.not.be.undefined; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Plan By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/gift-plans/get-plan-by-id/{{giftPlanId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Gift Plan Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/gift-plans/get-gift-plan-Summery/{{giftPlanId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Active Plans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/gift-plans/get-active-plans"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Gift Plan",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/gift-plans/update/{{giftPlanId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"occasionType\": \"GRADUATION\",\n  \"occasionDate\": \"{{occasionDate}}\",\n  \"budget\": 600,\n  \"currency\": \"SAR\",\n  \"preferredGiftStyle\": \"PRACTICAL\",\n  \"language\": \"ar\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Shahad - 6. Required Questions & Answers",
+      "description": "Dev: Shahad. Flow 4 — list active required questions for the plan (user endpoint), answer EVERY one dynamically, then submit. Moves the plan to REQUIRED_QUESTIONS_ANSWERED.",
+      "item": [
+        {
+          "name": "List Required Questions (build answers)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/required-questions/required-questions/{{giftPlanId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));",
+                  "var qs = []; try { qs = pm.response.json(); } catch (e) {}",
+                  "var samples = ['قريب جداً، نتواصل يومياً.', 'الميزانية حوالي 500 ريال.', 'يفضّل الهدايا العملية والتقنية.'];",
+                  "var answers = (Array.isArray(qs) ? qs : []).map(function (q, i) { return { requiredQuestionId: (q.id != null ? q.id : (q.requiredQuestionId != null ? q.requiredQuestionId : q.questionId)), answerText: samples[i % samples.length] }; });",
+                  "pm.collectionVariables.set('requiredAnswersBody', JSON.stringify({ answers: answers }));",
+                  "pm.test('Built answers for all required questions', function () { pm.expect(answers.length).to.be.above(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit Required Answers",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/required-questions-answer/submit-required-answers/{{giftPlanId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{{requiredAnswersBody}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Required Answers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/required-questions-answer/list-required-answers/{{giftPlanId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Shahad - 7. AI Follow-up Questions & Answers",
+      "description": "Dev: Shahad. Flow 5 — AI generates follow-up questions (OpenAI) for the signed-in user, we answer EVERY one dynamically. Moves the plan to AI_QUESTIONS_ANSWERED.",
+      "item": [
+        {
+          "name": "Generate AI Questions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/ai-questions/ai-questions/generate/{{giftPlanId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"AI questions generated (needs openai key)\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"AI questions generated (needs openai key) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List AI Questions (build answers)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/ai-questions/get-ai-questions/{{giftPlanId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));",
+                  "var qs = []; try { qs = pm.response.json(); } catch (e) {}",
+                  "var samples = ['نعم، يحب ذلك كثيراً.', 'لا يملكها حالياً.', 'يفضّل اللون الأسود.', 'نعم، يناسب اهتماماته.'];",
+                  "var answers = (Array.isArray(qs) ? qs : []).map(function (q, i) { return { aiGeneratedQuestionId: (q.id != null ? q.id : (q.aiGeneratedQuestionId != null ? q.aiGeneratedQuestionId : q.questionId)), answerText: samples[i % samples.length] }; });",
+                  "pm.collectionVariables.set('aiAnswersBody', JSON.stringify({ answers: answers }));",
+                  "pm.test('Built answers for all AI questions', function () { pm.expect(answers.length).to.be.above(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit AI Answers",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/ai-answers/ai-answers/{{giftPlanId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{{aiAnswersBody}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List AI Answers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/ai-answers/ai-answers/{{giftPlanId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Shahad - 8. AI Gift Recommendations",
+      "description": "Dev: Shahad. Flow 6 — generate AI gift ideas, then select one (required before product search).",
+      "item": [
+        {
+          "name": "Generate Recommendations (capture id)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/gif-recommendation/get-Recomendation/{{giftPlanId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));",
+                  "var arr = pm.response.json();",
+                  "if (Array.isArray(arr) && arr.length) { pm.collectionVariables.set(\"recommendationId\", arr[0].id); console.log(\"recommendationId =\", arr[0].id); }",
+                  "pm.test(\"recommendationId captured\", function () { pm.expect(pm.collectionVariables.get(\"recommendationId\")).to.not.be.undefined; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Select Recommendation",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": "{{base_url}}/api/v1/gif-recommendation/select-Recomendation/{{recommendationId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Selected Idea",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/gif-recommendation/get-selected-idea/{{giftPlanId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Shahad - 9. Product Search & Selection",
+      "description": "Dev: Shahad. Flow 7 — search real products (SearchAPI.io) for the selected idea, then save the chosen one. Tolerant: needs searchapi.api.key configured.",
+      "item": [
+        {
+          "name": "Search Products (capture productId)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/search/product/{{giftPlanId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Product search returned results\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Product search returned results -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});",
+                  "try { var arr = pm.response.json(); if (Array.isArray(arr) && arr.length) { pm.collectionVariables.set('productId', arr[0].id); console.log('productId =', arr[0].id); } } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Select Product",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/v1/selected-products/select-product/{{productId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Product selected\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Product selected -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Selected Product (capture id)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/selected-products/get-selected-product/{{giftPlanId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Selected product fetched\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Selected product fetched -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});",
+                  "try { var b = pm.response.json(); if (b && b.id) { pm.collectionVariables.set('selectedProductId', b.id); console.log('selectedProductId =', b.id); } } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Saud - 10. Gift Messages",
+      "description": "Dev: Saud. Flow 8 — free AI gift message (standalone, no gift plan), AI from plan, plus manual message + edit. All for the signed-in user.",
+      "item": [
+        {
+          "name": "Generate Gift Message (AI, capture id)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/gift-messages/generate",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipientName\": \"عمار\",\n  \"relationship\": \"أخ\",\n  \"occasion\": \"تخرّج\",\n  \"giftName\": \"ساعة ذكية\",\n  \"tone\": \"دافئ وفخور\",\n  \"language\": \"ar\",\n  \"dialect\": \"سعودي\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));",
+                  "var b = pm.response.json();",
+                  "if (b && b.id) { pm.collectionVariables.set(\"giftMessageId\", b.id); console.log(\"giftMessageId =\", b.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Generate Gift Message From Plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/gift-messages/generate-from-plan/{{giftPlanId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tone\": \"دافئ وفخور\",\n  \"language\": \"ar\",\n  \"dialect\": \"سعودي\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Message generated from plan\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Message generated from plan -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Manual Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/gift-messages/manual",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messageText\": \"مبروك تخرّجك يا عمار، فخورون فيك دائماً وننتظر إنجازاتك القادمة.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List My Messages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/gift-messages/my"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Message By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/gift-messages/{{giftMessageId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Message",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/gift-messages/{{giftMessageId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messageText\": \"ألف مبروك التخرّج يا عمار، هذه هدية بسيطة تليق بك.\",\n  \"tone\": \"دافئ\",\n  \"language\": \"ar\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Saud - 11. Gift Card (Premium)",
+      "description": "Dev: Saud. Flow 13 — premium gift card with QR + rendered image, emailed to swwdswwd124@gmail.com. Premium-gated: returns 403 until the manual 3DS premium activation is done.",
+      "item": [
+        {
+          "name": "Create Gift Card",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/gift-cards",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"giftMessageId\": \"{{giftMessageId}}\",\n  \"recipientName\": \"عمار\",\n  \"senderName\": \"سعود\",\n  \"cardSize\": \"MEDIUM\",\n  \"linkType\": \"VIDEO\",\n  \"linkUrl\": \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\",\n  \"sentToEmail\": \"swwdswwd124@gmail.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Gift card created (needs premium)\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Gift card created (needs premium) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});",
+                  "try { var b = pm.response.json(); if (b && b.id) { pm.collectionVariables.set('giftCardId', b.id); console.log('giftCardId =', b.id); } } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List My Gift Cards",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/gift-cards/my"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Gift Card By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/gift-cards/{{giftCardId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Gift card fetched\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Gift card fetched -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "View Gift Card Image (PNG)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/gift-cards/{{giftCardId}}/image"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Gift card image returned\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Gift card image returned -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Gift Card",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/gift-cards/{{giftCardId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardSize\": \"LARGE\",\n  \"recipientName\": \"عمار\",\n  \"senderName\": \"سعود\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Gift card updated\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Gift card updated -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Regenerate Gift Card",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/v1/gift-cards/{{giftCardId}}/regenerate"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Gift card regenerated\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Gift card regenerated -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send Gift Card Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/gift-cards/{{giftCardId}}/send-email",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"swwdswwd124@gmail.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Gift card email sent\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Gift card email sent -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Saud - 12. Surprise Plan (Premium)",
+      "description": "Dev: Saud. Flow 12 — AI surprise plan. Premium-gated: returns 403 until premium is active.",
+      "item": [
+        {
+          "name": "Generate Surprise Plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/gift-plans/{{giftPlanId}}/surprise-plan/generate",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"language\": \"ar\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Surprise plan generated (needs premium)\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Surprise plan generated (needs premium) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Surprise Plan",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/gift-plans/{{giftPlanId}}/surprise-plan"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Surprise plan fetched\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Surprise plan fetched -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Saud - 13. Gift History",
+      "description": "Dev: Saud. Flow 9 — record the gifted product so future AI runs avoid repeats. Tolerant: depends on a selected product from flow 9.",
+      "item": [
+        {
+          "name": "Log Gift From Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/gift-history/from-product/{{selectedProductId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"wasGifted\": true,\n  \"userRating\": 5,\n  \"notes\": \"أحبّها عمار كثيراً وكانت مناسبة جداً.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Gift history logged\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Gift history logged -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get History By Product",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/gift-history/from-product/{{selectedProductId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"History fetched\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"History fetched -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Edit History Log",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/gift-history/from-product/{{selectedProductId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"wasGifted\": true,\n  \"userRating\": 4,\n  \"notes\": \"هدية ممتازة، لكن التوصيل تأخّر قليلاً.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"History edited\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"History edited -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List My History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/gift-history/my"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "History Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/gift-history/summary"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bayan - 14. Gift Quality Check",
+      "description": "Dev: Bayan. Flow 10 — standalone AI suitability check for a recipient (no gift plan needed).",
+      "item": [
+        {
+          "name": "Run Quality Check",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/gift-quality-checks/add/{{recipientId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"giftName\": \"ساعة ذكية\",\n  \"giftDescription\": \"ساعة ذكية رياضية تدعم تتبع اللياقة والإشعارات\",\n  \"price\": 499,\n  \"occasionType\": \"GRADUATION\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Checks By Recipient (capture id)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/gift-quality-checks/recipients/{{recipientId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));",
+                  "var arr = pm.response.json();",
+                  "if (Array.isArray(arr) && arr.length) {",
+                  "  var max = arr.reduce(function (a, b) { return (a.id > b.id ? a : b); });",
+                  "  pm.collectionVariables.set(\"qualityCheckId\", max.id);",
+                  "  console.log(\"qualityCheckId =\", max.id);",
+                  "}",
+                  "pm.test(\"qualityCheckId captured\", function () { pm.expect(pm.collectionVariables.get(\"qualityCheckId\")).to.not.be.undefined; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Quality Check By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/gift-quality-checks/get-one/{{qualityCheckId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bayan - 15. Reminders",
+      "description": "Dev: Bayan. Flow 15 — reminders (email / WhatsApp / in-app) for the signed-in user.",
+      "item": [
+        {
+          "name": "Add Reminder",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/reminders/add/{{recipientId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reminderDate\": \"{{reminderDate}}\",\n  \"message\": \"تذكير: تخرّج عمار بعد أسبوع، جهّز الهدية!\",\n  \"status\": \"PENDING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get My Reminders (capture id)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/reminders/get-my"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));",
+                  "var arr = pm.response.json();",
+                  "if (Array.isArray(arr) && arr.length) {",
+                  "  var max = arr.reduce(function (a, b) { return (a.id > b.id ? a : b); });",
+                  "  pm.collectionVariables.set(\"reminderId\", max.id);",
+                  "  console.log(\"reminderId =\", max.id);",
+                  "}",
+                  "pm.test(\"reminderId captured\", function () { pm.expect(pm.collectionVariables.get(\"reminderId\")).to.not.be.undefined; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Reminder",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/reminders/update/{{reminderId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reminderDate\": \"{{reminderDate}}\",\n  \"message\": \"تذكير محدّث: لا تنسَ تغليف هدية عمار.\",\n  \"status\": \"PENDING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Reminder",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/api/v1/reminders/delete/{{reminderId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bayan - 16. Notifications",
+      "description": "Dev: Bayan. Flow 16 — in-app notifications for the signed-in user.",
+      "item": [
+        {
+          "name": "Create Notification (capture id)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/notifications",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"توصياتك جاهزة\",\n  \"message\": \"تم تجهيز توصيات الهدايا الخاصة بعمار.\",\n  \"type\": \"RECOMMENDATIONS_READY\",\n  \"status\": \"UNREAD\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));",
+                  "var b = pm.response.json();",
+                  "if (b && b.id) { pm.collectionVariables.set(\"notificationId\", b.id); console.log(\"notificationId =\", b.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List My Notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/notifications/my"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Notification By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/notifications/{{notificationId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mark Notification Read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/notifications/{{notificationId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"READ\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Notification",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/api/v1/notifications/{{notificationId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bayan - 17. Group Gifts & Voting",
+      "description": "Dev: Bayan. Flow 14 — group gift with options, AI options, invites, public voting, results. Owner endpoints use Saud's login; the vote endpoints are public (/api/v1/public/group-gifts) and use the invite token, so they send no auth.",
+      "item": [
+        {
+          "name": "Create Group Gift (capture id)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/group-gifts",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipientId\": \"{{recipientId}}\",\n  \"title\": \"هدية تخرّج جماعية لعمار\",\n  \"description\": \"نجمع مساهمات الأصدقاء لاختيار هدية مميزة لعمار.\",\n  \"responsiblePersonName\": \"سعود\",\n  \"responsiblePersonEmail\": \"swwdswwd124@gmail.com\",\n  \"giftGivingDate\": \"{{giftGivingDate}}\",\n  \"votingDeadline\": \"{{votingDeadline}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));",
+                  "var b = pm.response.json();",
+                  "if (b && b.id) { pm.collectionVariables.set(\"groupGiftId\", b.id); console.log(\"groupGiftId =\", b.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List My Group Gifts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/group-gifts/my"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Group Gift By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/group-gifts/{{groupGiftId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Option",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/group-gifts/add-option/{{groupGiftId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"giftName\": \"ساعة آبل\",\n  \"description\": \"ساعة ذكية عملية تناسب اهتماماته التقنية\",\n  \"priceBand\": \"500-800 SAR\",\n  \"reason\": \"تجمع بين الفائدة والأناقة\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Generate AI Options",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/v1/group-gifts/ai-generate-option/{{groupGiftId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"AI options generated\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"AI options generated -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Options (capture optionId)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/group-gifts/get-options/{{groupGiftId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));",
+                  "var arr = pm.response.json();",
+                  "if (Array.isArray(arr) && arr.length) { pm.collectionVariables.set(\"groupGiftOptionId\", arr[0].id); console.log(\"groupGiftOptionId =\", arr[0].id); }",
+                  "pm.test(\"groupGiftOptionId captured\", function () { pm.expect(pm.collectionVariables.get(\"groupGiftOptionId\")).to.not.be.undefined; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send Invites (capture token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/group-gifts/send-invite/{{groupGiftId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"inviteeName\": \"عمار\",\n    \"inviteeEmail\": \"swwdswwd124@gmail.com\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Invites sent\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Invites sent -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});",
+                  "try { var b = pm.response.json(); var list = Array.isArray(b) ? b : (b && b.invites) ? b.invites : []; var withTok = list.find(function (x) { return x && x.token; }); if (withTok) { pm.collectionVariables.set('inviteToken', withTok.token); console.log('inviteToken =', withTok.token); } } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Vote Page (public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/public/group-gifts/vote/{{inviteToken}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Vote page data fetched\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Vote page data fetched -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit Vote (public)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/public/group-gifts/vote/{{inviteToken}}",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"groupGiftOptionId\": {{groupGiftOptionId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Vote submitted\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Vote submitted -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Results",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/group-gifts/results/{{groupGiftId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Results fetched\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Results fetched -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Close Voting",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": "{{base_url}}/api/v1/group-gifts/close-voting/{{groupGiftId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var c = pm.response.code;",
+                  "pm.test(\"Voting closed\", function () {",
+                  "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                  "  else { console.log(\"Voting closed -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Extra - Out-of-Flow Endpoints",
+      "description": "Endpoints not part of a main user journey: alternate listings, ADMIN management, utilities, the public webhook, and destructive deletes. Grouped per developer/resource. Run the flow folders first so captured IDs are available. ADMIN folders need {{adminUsername}}/{{adminPassword}} set to a real ADMIN account. The final \"Account Deletion\" folder is destructive — run it last.",
+      "item": [
+        {
+          "name": "Bayan - Users (extra, admin)",
+          "description": "List-all users is ADMIN-only. Uses Basic {{adminUsername}}/{{adminPassword}} (tolerant). There is no delete-by-id endpoint; the only delete is self-delete (see the final \"Account Deletion\" folder).",
+          "item": [
+            {
+              "name": "Get All Users (admin)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/users/get",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Users listed (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Users listed (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Bayan - Recipients (extra)",
+          "description": "List-my recipients via the alternate endpoint.",
+          "item": [
+            {
+              "name": "Get My Recipients",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/recipients/get"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Bayan - Admin Required Questions (extra, admin)",
+          "description": "Full ADMIN CRUD for required questions on a throwaway question. Uses Basic {{adminUsername}}/{{adminPassword}} (tolerant).",
+          "item": [
+            {
+              "name": "Create Temp Question",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/required-questions/add",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"questionText\": \"سؤال تجريبي: ما لونه المفضّل؟\",\n  \"questionType\": \"TEXT\",\n  \"isActive\": true,\n  \"displayOrder\": 9\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Temp question created (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Temp question created (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List & Capture Temp Question",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/required-questions/get",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));",
+                      "var arr = pm.response.json();",
+                      "if (Array.isArray(arr) && arr.length) {",
+                      "  var max = arr.reduce(function (a, b) { return (a.id > b.id ? a : b); });",
+                      "  pm.collectionVariables.set(\"tmpQuestionId\", max.id);",
+                      "  console.log(\"tmpQuestionId =\", max.id);",
+                      "}",
+                      "pm.test(\"tmpQuestionId captured\", function () { pm.expect(pm.collectionVariables.get(\"tmpQuestionId\")).to.not.be.undefined; });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update Temp Question",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/required-questions/update/{{tmpQuestionId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"questionText\": \"سؤال محدّث: ما لونه وماركته المفضّلة؟\",\n  \"questionType\": \"TEXT\",\n  \"isActive\": true,\n  \"displayOrder\": 9\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Temp question updated (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Temp question updated (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Disable Temp Question",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": "{{base_url}}/api/v1/required-questions/disable/{{tmpQuestionId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Temp question disabled (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Temp question disabled (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete Temp Question",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/required-questions/delete/{{tmpQuestionId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Temp question deleted (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Temp question deleted (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Bayan - Reminders (extra)",
+          "description": "List-all reminders for the signed-in user (alternate endpoint).",
+          "item": [
+            {
+              "name": "Get All Reminders",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/reminders/get"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Bayan - Group Gifts (extra)",
+          "description": "Update + delete on the group gift created in flow 17. Tolerant (voting may be closed).",
+          "item": [
+            {
+              "name": "Update Group Gift",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/group-gifts/{{groupGiftId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"هدية تخرّج جماعية لعمار (محدّثة)\",\n  \"description\": \"تم تحديث وصف الهدية الجماعية.\",\n  \"responsiblePersonName\": \"سعود\",\n  \"responsiblePersonEmail\": \"swwdswwd124@gmail.com\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Group gift updated\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Group gift updated -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete Group Gift",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/group-gifts/{{groupGiftId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Group gift deleted\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Group gift deleted -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Shahad - Required Question Answers (extra CRUD, admin)",
+          "description": "Standalone ADMIN CRUD on a single required-question answer (separate from the gift-plan submit flow). Uses Basic {{adminUsername}}/{{adminPassword}} (tolerant).",
+          "item": [
+            {
+              "name": "List Questions & Capture One",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/required-questions/get",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Questions listed (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Questions listed (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});",
+                      "try { var arr = pm.response.json(); if (Array.isArray(arr) && arr.length) { pm.collectionVariables.set('anyQuestionId', arr[0].id); } } catch (e) {}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Create RQ Answer",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/required-questions-answer/required-question/{{anyQuestionId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"answerText\": \"إجابة تجريبية على السؤال المطلوب.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"RQ answer created (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"RQ answer created (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get All RQ Answers & Capture",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/required-questions-answer/get",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));",
+                      "var arr = pm.response.json();",
+                      "if (Array.isArray(arr) && arr.length) {",
+                      "  var max = arr.reduce(function (a, b) { return (a.id > b.id ? a : b); });",
+                      "  pm.collectionVariables.set(\"tmpRqAnswerId\", max.id);",
+                      "  console.log(\"tmpRqAnswerId =\", max.id);",
+                      "}",
+                      "pm.test(\"tmpRqAnswerId captured\", function () { pm.expect(pm.collectionVariables.get(\"tmpRqAnswerId\")).to.not.be.undefined; });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get RQ Answer By Id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/required-questions-answer/get-by-id/{{tmpRqAnswerId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"RQ answer fetched (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"RQ answer fetched (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update RQ Answer",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/required-questions-answer/update/{{tmpRqAnswerId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"answerText\": \"إجابة محدّثة على السؤال المطلوب.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"RQ answer updated (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"RQ answer updated (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete RQ Answer",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/required-questions-answer/delete/{{tmpRqAnswerId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"RQ answer deleted (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"RQ answer deleted (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Shahad - AI Questions (extra CRUD, admin)",
+          "description": "Manual ADMIN CRUD on AI questions (separate from the AI generate flow). Uses the gift plan from flow 5 and Basic {{adminUsername}}/{{adminPassword}} (tolerant).",
+          "item": [
+            {
+              "name": "Create AI Question",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/ai-questions/create/{{giftPlanId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"questionText\": \"هل يفضّل عمار الهدايا التقنية أم الكلاسيكية؟\",\n  \"reasonForQuestion\": \"لتحديد اتجاه الهدية المناسب.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"AI question created (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"AI question created (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get All AI Questions & Capture",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/ai-questions/get",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));",
+                      "var arr = pm.response.json();",
+                      "if (Array.isArray(arr) && arr.length) {",
+                      "  var max = arr.reduce(function (a, b) { return (a.id > b.id ? a : b); });",
+                      "  pm.collectionVariables.set(\"tmpAiQuestionId\", max.id);",
+                      "  console.log(\"tmpAiQuestionId =\", max.id);",
+                      "}",
+                      "pm.test(\"tmpAiQuestionId captured\", function () { pm.expect(pm.collectionVariables.get(\"tmpAiQuestionId\")).to.not.be.undefined; });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get AI Question By Id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/ai-questions/get-by-id/{{tmpAiQuestionId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"AI question fetched (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"AI question fetched (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update AI Question",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/ai-questions/update/{{tmpAiQuestionId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"questionText\": \"هل يفضّل عمار الهدايا التقنية الحديثة؟\",\n  \"reasonForQuestion\": \"تحديث سبب السؤال.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"AI question updated (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"AI question updated (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Shahad - AI Answers (extra CRUD, admin)",
+          "description": "Manual ADMIN CRUD on AI answers, attached to the AI question created above. Uses Basic {{adminUsername}}/{{adminPassword}} (tolerant).",
+          "item": [
+            {
+              "name": "Create AI Answer",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/ai-answers/ai-question/{{tmpAiQuestionId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"answerText\": \"نعم، يفضّل الهدايا التقنية الحديثة.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"AI answer created (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"AI answer created (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get All AI Answers & Capture",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/ai-answers/get",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));",
+                      "var arr = pm.response.json();",
+                      "if (Array.isArray(arr) && arr.length) {",
+                      "  var max = arr.reduce(function (a, b) { return (a.id > b.id ? a : b); });",
+                      "  pm.collectionVariables.set(\"tmpAiAnswerId\", max.id);",
+                      "  console.log(\"tmpAiAnswerId =\", max.id);",
+                      "}",
+                      "pm.test(\"tmpAiAnswerId captured\", function () { pm.expect(pm.collectionVariables.get(\"tmpAiAnswerId\")).to.not.be.undefined; });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get AI Answer By Id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/ai-answers/get-by-id/{{tmpAiAnswerId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"AI answer fetched (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"AI answer fetched (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update AI Answer",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/ai-answers/update/{{tmpAiAnswerId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"answerText\": \"نعم، خصوصاً الأجهزة القابلة للارتداء.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"AI answer updated (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"AI answer updated (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete AI Answer",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/ai-answers/delete/{{tmpAiAnswerId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"AI answer deleted (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"AI answer deleted (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete AI Question",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/ai-questions/delete/{{tmpAiQuestionId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"AI question deleted (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"AI question deleted (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Shahad - Recommendations (extra)",
+          "description": "Regenerate ideas + unselect. Tolerant: regenerate errors once an idea is already selected (as in flow 8).",
+          "item": [
+            {
+              "name": "Regenerate Recommendations",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gif-recommendation/regenerate-Recomendation/{{giftPlanId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Recommendations regenerated\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Recommendations regenerated -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Unselect Recommendation",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gif-recommendation/unselect-Recomendation/{{recommendationId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Recommendation unselected\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Recommendation unselected -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Shahad - Product Selection (extra)",
+          "description": "Clear the selected product for the plan. Tolerant (depends on a prior selection).",
+          "item": [
+            {
+              "name": "Clear Selected Product",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/selected-products/clear-selected-product/{{giftPlanId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Selected product cleared\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Selected product cleared -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Shahad - Gift Plans (extra)",
+          "description": "Previous-plans listing + delete (uses a throwaway plan so the main journey plan survives).",
+          "item": [
+            {
+              "name": "Get Previous Plans",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-plans/get-previous-plans"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Previous plans fetched\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Previous plans fetched -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Create Temp Plan",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/gift-plans/create/{{recipientId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"occasionType\": \"BIRTHDAY\",\n  \"occasionDate\": \"{{occasionDate}}\",\n  \"budget\": 200,\n  \"currency\": \"SAR\",\n  \"preferredGiftStyle\": \"PRACTICAL\",\n  \"language\": \"ar\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Capture Temp Plan",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-plans/get-my-plans"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));",
+                      "var arr = pm.response.json();",
+                      "if (Array.isArray(arr) && arr.length) {",
+                      "  var max = arr.reduce(function (a, b) { return (a.id > b.id ? a : b); });",
+                      "  pm.collectionVariables.set(\"tmpGiftPlanId\", max.id);",
+                      "  console.log(\"tmpGiftPlanId =\", max.id);",
+                      "}",
+                      "pm.test(\"tmpGiftPlanId captured\", function () { pm.expect(pm.collectionVariables.get(\"tmpGiftPlanId\")).to.not.be.undefined; });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete Temp Plan",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-plans/delete/{{tmpGiftPlanId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Temp plan deleted (204)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Temp plan deleted (204) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Saud - Surprise Plan (extra, premium)",
+          "description": "Regenerate / update / delete the surprise plan. Premium-gated: tolerant (403 until premium is active).",
+          "item": [
+            {
+              "name": "Regenerate Surprise Plan",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/gift-plans/{{giftPlanId}}/surprise-plan/regenerate",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"language\": \"ar\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Surprise plan regenerated\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Surprise plan regenerated -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update Surprise Plan",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/gift-plans/{{giftPlanId}}/surprise-plan",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"planTitle\": \"خطة مفاجأة محدّثة\",\n  \"steps\": \"رتّب الهدية، جهّز البطاقة، نسّق التوقيت.\",\n  \"timingSuggestion\": \"بعد حفل التخرّج مباشرة.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Surprise plan updated\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Surprise plan updated -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete Surprise Plan",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-plans/{{giftPlanId}}/surprise-plan"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Surprise plan deleted\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Surprise plan deleted -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Saud - Gift Card (extra, premium)",
+          "description": "Delete the gift card from flow 11. Tolerant (needs the premium-created card).",
+          "item": [
+            {
+              "name": "Delete Gift Card",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-cards/{{giftCardId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Gift card deleted\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Gift card deleted -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Saud - Gift History (extra)",
+          "description": "Delete the history log from flow 13. Tolerant (depends on a logged product).",
+          "item": [
+            {
+              "name": "Delete History Log",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-history/from-product/{{selectedProductId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"History log deleted\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"History log deleted -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Saud - Payments (extra, public webhook)",
+          "description": "Moyasar webhook sync endpoint (public; normally called by Moyasar). Tolerant: needs a real payment id.",
+          "item": [
+            {
+              "name": "Moyasar Webhook Sync",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/payments/webhook/moyasar",
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"id\": \"{{moyasarId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Webhook processed\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Webhook processed -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Saud - QR Code (utility)",
+          "description": "Standalone QR generator (authenticated utility).",
+          "item": [
+            {
+              "name": "Generate QR Code",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/qr-code/generate",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"url\": \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Saud - Account Deletion (DESTRUCTIVE - run last)",
+          "description": "Self-delete the signed-in account. The only delete endpoint is for the principal (no delete-by-id), so this removes the Saud account created in flow 1. Run this LAST, on its own, after everything else. Tolerant.",
+          "item": [
+            {
+              "name": "Delete Current User (self)",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/users/delete"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Current user deleted (self)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Current user deleted (self) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Compute dynamic, always-valid dates once per request.",
+          "function pad(n){return String(n).padStart(2,'0');}",
+          "function fmtDate(x){return x.getFullYear()+'-'+pad(x.getMonth()+1)+'-'+pad(x.getDate());}",
+          "function fmtDT(x){return fmtDate(x)+'T'+pad(x.getHours())+':'+pad(x.getMinutes())+':'+pad(x.getSeconds());}",
+          "var now = new Date();",
+          "function plus(d){return new Date(now.getTime()+d*86400000);}",
+          "pm.collectionVariables.set('occasionDate', fmtDate(plus(30)));",
+          "pm.collectionVariables.set('reminderDate', fmtDT(plus(7)));",
+          "pm.collectionVariables.set('giftGivingDate', fmtDate(plus(21)));",
+          "pm.collectionVariables.set('votingDeadline', fmtDT(plus(14)));"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "stamp",
+      "value": ""
+    },
+    {
+      "key": "username",
+      "value": ""
+    },
+    {
+      "key": "password",
+      "value": ""
+    },
+    {
+      "key": "adminUsername",
+      "value": "admin"
+    },
+    {
+      "key": "adminPassword",
+      "value": "Admin!2026pass"
+    },
+    {
+      "key": "recipientId",
+      "value": ""
+    },
+    {
+      "key": "giftPlanId",
+      "value": ""
+    },
+    {
+      "key": "requiredAnswersBody",
+      "value": ""
+    },
+    {
+      "key": "aiAnswersBody",
+      "value": ""
+    },
+    {
+      "key": "recommendationId",
+      "value": ""
+    },
+    {
+      "key": "productId",
+      "value": ""
+    },
+    {
+      "key": "selectedProductId",
+      "value": ""
+    },
+    {
+      "key": "giftMessageId",
+      "value": ""
+    },
+    {
+      "key": "giftCardId",
+      "value": ""
+    },
+    {
+      "key": "moyasarId",
+      "value": ""
+    },
+    {
+      "key": "qualityCheckId",
+      "value": ""
+    },
+    {
+      "key": "reminderId",
+      "value": ""
+    },
+    {
+      "key": "notificationId",
+      "value": ""
+    },
+    {
+      "key": "groupGiftId",
+      "value": ""
+    },
+    {
+      "key": "groupGiftOptionId",
+      "value": ""
+    },
+    {
+      "key": "inviteToken",
+      "value": ""
+    },
+    {
+      "key": "occasionDate",
+      "value": ""
+    },
+    {
+      "key": "reminderDate",
+      "value": ""
+    },
+    {
+      "key": "giftGivingDate",
+      "value": ""
+    },
+    {
+      "key": "votingDeadline",
+      "value": ""
+    },
+    {
+      "key": "tmpQuestionId",
+      "value": ""
+    },
+    {
+      "key": "anyQuestionId",
+      "value": ""
+    },
+    {
+      "key": "tmpRqAnswerId",
+      "value": ""
+    },
+    {
+      "key": "tmpAiQuestionId",
+      "value": ""
+    },
+    {
+      "key": "tmpAiAnswerId",
+      "value": ""
+    },
+    {
+      "key": "tmpGiftPlanId",
+      "value": ""
+    }
+  ]
+}

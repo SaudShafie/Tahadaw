@@ -31,10 +31,6 @@ public class RecipientService {
         recipientRepository.save(recipient);
     }
 
-    public List<Recipient> getRecipients(){
-        return recipientRepository.findAll();
-    }
-
     public void updateRecipient(Long userId, Long recipientId, Recipient recipient){
 
         userRepository.findUserById(userId)

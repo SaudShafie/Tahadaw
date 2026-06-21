@@ -87,9 +87,8 @@ public class GroupGiftService {
         if (request.getVotingDeadline() != null) {
             groupGift.setVotingDeadline(request.getVotingDeadline());
         }
-        if (request.getStatus() != null) {
-            groupGift.setStatus(request.getStatus());
-        }
+        // status is intentionally NOT editable here; it is owned by the voting
+        // state machine (OPEN on create -> CLOSED via closeVoting).
 
         return toDto(groupGiftRepository.save(groupGift));
     }
@@ -161,6 +160,7 @@ public class GroupGiftService {
 
 
     //Bayan
+    @Transactional
     public void generateAiOptions(Long userId, Long groupGiftId) {
 
         User user = userRepository.findUserById(userId)
@@ -310,6 +310,7 @@ public class GroupGiftService {
     }
 
     //Bayan
+    @Transactional
     public List<GroupGiftInvite> sendInvites(Long userId, Long groupGiftId, List<GroupGiftInvite> invites) {
 
         User user = userRepository.findUserById(userId)
@@ -383,6 +384,7 @@ public class GroupGiftService {
     }
 
     //Bayan
+    @Transactional
     public void submitVote(String token, Long optionId) {
 
         GroupGiftInvite invite = groupGiftInviteRepository.findByToken(token)

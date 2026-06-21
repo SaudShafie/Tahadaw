@@ -43,14 +43,14 @@ public class ReminderService {
         reminderRepository.save(reminder);
     }
 
-    public List<Reminder> getReminders() {
-        return reminderRepository.findAll();
+    public List<Reminder> getReminders(Long userId) {
+        userRepository.findUserById(userId).orElseThrow(() -> new ApiException("User not found"));
+        return reminderRepository.findAllByUser_IdOrderByReminderDateAsc(userId);
     }
 
-    public void updateReminder(Long reminderId, Reminder reminder) {
+    public void updateReminder(Long userId, Long reminderId, Reminder reminder) {
 
-        Reminder oldReminder = reminderRepository.findReminderById(reminderId)
-                .orElseThrow(() -> new ApiException("Reminder not found"));
+        Reminder oldReminder = requireOwnedReminder(userId, reminderId);
 
         oldReminder.setReminderDate(reminder.getReminderDate());
         oldReminder.setMessage(reminder.getMessage());
@@ -58,12 +58,20 @@ public class ReminderService {
         reminderRepository.save(oldReminder);
     }
 
-    public void deleteReminder(Long reminderId) {
+    public void deleteReminder(Long userId, Long reminderId) {
 
-        Reminder reminder = reminderRepository.findReminderById(reminderId)
-                .orElseThrow(() -> new ApiException("Reminder not found"));
+        Reminder reminder = requireOwnedReminder(userId, reminderId);
 
         reminderRepository.delete(reminder);
+    }
+
+    private Reminder requireOwnedReminder(Long userId, Long reminderId) {
+        Reminder reminder = reminderRepository.findReminderById(reminderId)
+                .orElseThrow(() -> new ApiException("Reminder not found"));
+        if (reminder.getUser() == null || !reminder.getUser().getId().equals(userId)) {
+            throw new ApiException("Reminder not found");
+        }
+        return reminder;
     }
 
 

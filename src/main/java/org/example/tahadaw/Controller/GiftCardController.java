@@ -7,9 +7,11 @@ import org.example.tahadaw.DTO.IN.GiftCardCreateDTOIn;
 import org.example.tahadaw.DTO.IN.GiftCardSendEmailDTOIn;
 import org.example.tahadaw.DTO.IN.GiftCardUpdateDTOIn;
 import org.example.tahadaw.DTO.OUT.GiftCardDTOOut;
+import org.example.tahadaw.Model.User;
 import org.example.tahadaw.Service.GiftCardService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,55 +24,55 @@ public class GiftCardController {
     private final GiftCardService giftCardService;
 
     @PostMapping
-    public ResponseEntity<GiftCardDTOOut> create(@RequestParam Long userId,
+    public ResponseEntity<GiftCardDTOOut> create(@AuthenticationPrincipal User user,
                                                  @Valid @RequestBody GiftCardCreateDTOIn request) {
-        return ResponseEntity.ok(giftCardService.create(userId, request));
+        return ResponseEntity.ok(giftCardService.create(user.getId(), request));
     }
 
     @GetMapping("/my")
-    public ResponseEntity<List<GiftCardDTOOut>> listMine(@RequestParam Long userId) {
-        return ResponseEntity.ok(giftCardService.listMine(userId));
+    public ResponseEntity<List<GiftCardDTOOut>> listMine(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(giftCardService.listMine(user.getId()));
     }
 
     @GetMapping("/{giftCardId}")
-    public ResponseEntity<GiftCardDTOOut> getOne(@RequestParam Long userId,
+    public ResponseEntity<GiftCardDTOOut> getOne(@AuthenticationPrincipal User user,
                                                  @PathVariable Long giftCardId) {
-        return ResponseEntity.ok(giftCardService.getOne(userId, giftCardId));
+        return ResponseEntity.ok(giftCardService.getOne(user.getId(), giftCardId));
     }
 
     @PutMapping("/{giftCardId}")
-    public ResponseEntity<GiftCardDTOOut> update(@RequestParam Long userId,
+    public ResponseEntity<GiftCardDTOOut> update(@AuthenticationPrincipal User user,
                                                 @PathVariable Long giftCardId,
                                                 @Valid @RequestBody GiftCardUpdateDTOIn request) {
-        return ResponseEntity.ok(giftCardService.update(userId, giftCardId, request));
+        return ResponseEntity.ok(giftCardService.update(user.getId(), giftCardId, request));
     }
 
     @PostMapping("/{giftCardId}/regenerate")
-    public ResponseEntity<GiftCardDTOOut> regenerate(@RequestParam Long userId,
+    public ResponseEntity<GiftCardDTOOut> regenerate(@AuthenticationPrincipal User user,
                                                      @PathVariable Long giftCardId) {
-        return ResponseEntity.ok(giftCardService.regenerate(userId, giftCardId));
+        return ResponseEntity.ok(giftCardService.regenerate(user.getId(), giftCardId));
     }
 
     @GetMapping(value = "/{giftCardId}/image", produces = MediaType.IMAGE_PNG_VALUE)
-    public ResponseEntity<byte[]> viewImage(@RequestParam Long userId,
+    public ResponseEntity<byte[]> viewImage(@AuthenticationPrincipal User user,
                                             @PathVariable Long giftCardId) {
         return ResponseEntity.ok()
                 .contentType(MediaType.IMAGE_PNG)
-                .body(giftCardService.getCardImage(userId, giftCardId));
+                .body(giftCardService.getCardImage(user.getId(), giftCardId));
     }
 
     @PostMapping("/{giftCardId}/send-email")
-    public ResponseEntity<GiftCardDTOOut> sendEmail(@RequestParam Long userId,
+    public ResponseEntity<GiftCardDTOOut> sendEmail(@AuthenticationPrincipal User user,
                                                     @PathVariable Long giftCardId,
                                                     @Valid @RequestBody(required = false) GiftCardSendEmailDTOIn request) {
         String email = request != null ? request.getEmail() : null;
-        return ResponseEntity.ok(giftCardService.sendEmail(userId, giftCardId, email));
+        return ResponseEntity.ok(giftCardService.sendEmail(user.getId(), giftCardId, email));
     }
 
     @DeleteMapping("/{giftCardId}")
-    public ResponseEntity<ApiResponse> delete(@RequestParam Long userId,
+    public ResponseEntity<ApiResponse> delete(@AuthenticationPrincipal User user,
                                               @PathVariable Long giftCardId) {
-        giftCardService.delete(userId, giftCardId);
+        giftCardService.delete(user.getId(), giftCardId);
         return ResponseEntity.ok(new ApiResponse("Gift card deleted."));
     }
 }

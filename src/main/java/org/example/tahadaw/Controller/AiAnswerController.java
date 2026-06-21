@@ -6,8 +6,10 @@ import org.example.tahadaw.Api.ApiResponse;
 import org.example.tahadaw.DTO.IN.AiQuestionAnswerDTOIn;
 import org.example.tahadaw.DTO.IN.AiQuestionAnswersSubmitDTOIn;
 import org.example.tahadaw.DTO.OUT.AiQuestionAnswerDTOOut;
+import org.example.tahadaw.Model.User;
 import org.example.tahadaw.Service.AiAnswerService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -55,18 +57,18 @@ public class AiAnswerController {
     }
 
     // Shahad
-    @PostMapping("/ai-answers/{userId}/{giftPlanId}")
+    @PostMapping("/ai-answers/{giftPlanId}")
     public ResponseEntity<List<AiQuestionAnswerDTOOut>> submitAiAnswersByPath(
-            @PathVariable Long userId,
+            @AuthenticationPrincipal User user,
             @PathVariable Long giftPlanId,
             @RequestBody @Valid AiQuestionAnswersSubmitDTOIn request) {
-        return ResponseEntity.status(200).body(aiAnswerService.submitAnswers(userId, giftPlanId, request));
+        return ResponseEntity.status(200).body(aiAnswerService.submitAnswers(user.getId(), giftPlanId, request));
     }
 
     // Shahad style
-    @GetMapping("/ai-answers/{userId}/{giftPlanId}")
-    public ResponseEntity<List<AiQuestionAnswerDTOOut>> listAiAnswers(@PathVariable Long userId,
+    @GetMapping("/ai-answers/{giftPlanId}")
+    public ResponseEntity<List<AiQuestionAnswerDTOOut>> listAiAnswers(@AuthenticationPrincipal User user,
                                                                             @PathVariable Long giftPlanId) {
-        return ResponseEntity.status(200).body(aiAnswerService.listAnswers(userId, giftPlanId));
+        return ResponseEntity.status(200).body(aiAnswerService.listAnswers(user.getId(), giftPlanId));
     }
 }

@@ -21,7 +21,7 @@ public class GiftPlanDTOIn {
 
     //requeired Q
     @Positive
-    private Long budgetMinor;
+    private Long budget;
     //set in service
     @NotEmpty(message = "Currency cannot be empty")
     @Size(min = 3, max = 3)

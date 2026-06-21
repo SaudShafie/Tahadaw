@@ -39,12 +39,17 @@ public class PaymentService {
     private String premiumCurrency;
 
     @Transactional
-    public PaymentDTOOut processPremiumPayment(MoyasarCardPaymentDTOIn request) {
-        User user = userRepository.findUserById(request.getUserId())
+    public PaymentDTOOut processPremiumPayment(Long userId, MoyasarCardPaymentDTOIn request) {
+        User user = userRepository.findUserById(userId)
                 .orElseThrow(() -> new ApiException("User not found."));
 
         if (Boolean.TRUE.equals(user.getIsPremium())) {
             throw new ApiException("User already has premium access.");
+        }
+
+        // Idempotency guard: block a second charge while a premium payment is still pending.
+        if (paymentRepository.existsByUser_IdAndPaymentTypeAndStatus(user.getId(), "PREMIUM", "PENDING")) {
+            throw new ApiException("A premium payment is already in progress. Complete or wait for it to finish.");
         }
 
         Payment payment = new Payment();

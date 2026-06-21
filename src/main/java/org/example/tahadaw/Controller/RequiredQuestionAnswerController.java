@@ -6,8 +6,10 @@ import org.example.tahadaw.Api.ApiResponse;
 import org.example.tahadaw.DTO.IN.RequiredQuestionAnswerDTOIn;
 import org.example.tahadaw.DTO.IN.RequiredQuestionAnswersSubmitDTOIn;
 import org.example.tahadaw.DTO.OUT.RequiredQuestionAnswerDTOOut;
+import org.example.tahadaw.Model.User;
 import org.example.tahadaw.Service.RequiredQuestionAnswerService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -55,18 +57,18 @@ public class RequiredQuestionAnswerController {
         return ResponseEntity.status(200).body(new ApiResponse("Required question answer deleted successfully."));
     }
 
-    @PostMapping("/submit-required-answers/{userId}/{giftPlanId}")
+    @PostMapping("/submit-required-answers/{giftPlanId}")
     public ResponseEntity<?> submitRequiredAnswers(
-            @PathVariable Long userId,
+            @AuthenticationPrincipal User user,
             @PathVariable Long giftPlanId,
             @RequestBody @Valid RequiredQuestionAnswersSubmitDTOIn request) {
-        requiredQuestionAnswerService.submitAnswers(userId, giftPlanId, request);
+        requiredQuestionAnswerService.submitAnswers(user.getId(), giftPlanId, request);
         return ResponseEntity.status(200).body(new ApiResponse("Answers for required question submitted successfully"));
     }
 
-    @GetMapping("/list-required-answers/{userId}/{giftPlanId}")
-    public ResponseEntity<List<RequiredQuestionAnswerDTOOut>> listRequiredAnswers(@PathVariable Long userId,
+    @GetMapping("/list-required-answers/{giftPlanId}")
+    public ResponseEntity<List<RequiredQuestionAnswerDTOOut>> listRequiredAnswers(@AuthenticationPrincipal User user,
                                                                                   @PathVariable Long giftPlanId) {
-        return ResponseEntity.status(200).body(requiredQuestionAnswerService.listByGiftPlan(userId, giftPlanId));
+        return ResponseEntity.status(200).body(requiredQuestionAnswerService.listByGiftPlan(user.getId(), giftPlanId));
     }
 }

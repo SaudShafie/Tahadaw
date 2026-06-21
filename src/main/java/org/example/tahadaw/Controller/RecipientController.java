@@ -5,9 +5,11 @@ import lombok.RequiredArgsConstructor;
 import org.example.tahadaw.Api.ApiResponse;
 import org.example.tahadaw.DTO.OUT.GiftHistoryDTOOut;
 import org.example.tahadaw.Model.Recipient;
+import org.example.tahadaw.Model.User;
 import org.example.tahadaw.Service.GiftHistoryService;
 import org.example.tahadaw.Service.RecipientService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,44 +22,44 @@ public class RecipientController {
     private final RecipientService recipientService;
     private final GiftHistoryService giftHistoryService;
 
-    @PostMapping("/add/{userId}")
-    public ResponseEntity<?> addRecipient(@PathVariable Long userId, @RequestBody @Valid Recipient recipient) {
-        recipientService.addRecipient(userId, recipient);
+    @PostMapping("/add")
+    public ResponseEntity<?> addRecipient(@AuthenticationPrincipal User user, @RequestBody @Valid Recipient recipient) {
+        recipientService.addRecipient(user.getId(), recipient);
         return ResponseEntity.status(200).body(new ApiResponse("Recipient added successfully"));
     }
 
     @GetMapping("/get")
-    public ResponseEntity<?> getRecipients() {
-        return ResponseEntity.status(200).body(recipientService.getRecipients());
+    public ResponseEntity<?> getRecipients(@AuthenticationPrincipal User user) {
+        return ResponseEntity.status(200).body(recipientService.getRecipientsByUserId(user.getId()));
     }
 
-    @PutMapping("/update/{userId}/{recipientId}")
-    public ResponseEntity<?> updateRecipient(@PathVariable Long userId , @PathVariable Long recipientId, @RequestBody @Valid Recipient recipient) {
-        recipientService.updateRecipient(userId,recipientId, recipient);
+    @PutMapping("/update/{recipientId}")
+    public ResponseEntity<?> updateRecipient(@AuthenticationPrincipal User user , @PathVariable Long recipientId, @RequestBody @Valid Recipient recipient) {
+        recipientService.updateRecipient(user.getId(),recipientId, recipient);
         return ResponseEntity.status(200).body(new ApiResponse("Recipient updated successfully"));
     }
 
-    @DeleteMapping("/delete/{userId}/{recipientId}")
-    public ResponseEntity<?> deleteRecipient(@PathVariable Long userId , @PathVariable Long recipientId) {
-        recipientService.deleteRecipient(userId,recipientId);
+    @DeleteMapping("/delete/{recipientId}")
+    public ResponseEntity<?> deleteRecipient(@AuthenticationPrincipal User user , @PathVariable Long recipientId) {
+        recipientService.deleteRecipient(user.getId(),recipientId);
         return ResponseEntity.status(200).body(new ApiResponse("Recipient deleted successfully"));
     }
 
     @GetMapping("/{recipientId}/gift-history")
-    public ResponseEntity<List<GiftHistoryDTOOut>> listGiftHistory(@RequestParam Long userId,
+    public ResponseEntity<List<GiftHistoryDTOOut>> listGiftHistory(@AuthenticationPrincipal User user,
                                                                     @PathVariable Long recipientId) {
-        return ResponseEntity.ok(giftHistoryService.listByRecipient(userId, recipientId));
+        return ResponseEntity.ok(giftHistoryService.listByRecipient(user.getId(), recipientId));
     }
 
-    @GetMapping("/get-by-user-id/{userId}")
-    public ResponseEntity<?> getRecipientsByUserId(@PathVariable Long userId){
-        return ResponseEntity.status(200).body(recipientService.getRecipientsByUserId(userId));
+    @GetMapping("/get-by-user-id")
+    public ResponseEntity<?> getRecipientsByUserId(@AuthenticationPrincipal User user){
+        return ResponseEntity.status(200).body(recipientService.getRecipientsByUserId(user.getId()));
     }
 
-    @GetMapping("/get/{userId}/{recipientId}")
-    public ResponseEntity<?> getRecipientByIdAndUserId(@PathVariable Long userId,
+    @GetMapping("/get/{recipientId}")
+    public ResponseEntity<?> getRecipientByIdAndUserId(@AuthenticationPrincipal User user,
                                                        @PathVariable Long recipientId) {
 
-        return ResponseEntity.status(200).body(recipientService.getRecipientByIdAndUserId(userId, recipientId));
+        return ResponseEntity.status(200).body(recipientService.getRecipientByIdAndUserId(user.getId(), recipientId));
     }
 }

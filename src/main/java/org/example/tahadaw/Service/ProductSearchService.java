@@ -37,107 +37,6 @@ public class ProductSearchService {
     private final GiftIdeaRecommendationRepository giftIdeaRecommendationRepository;
     private final SelectedProductRepository selectedProductRepository;
 
-    private final HttpClient httpClient = HttpClient.newHttpClient();
-
-    @Value("${searchapi.api.key:}")
-    private String apiKey;
-
-    @Value("${searchapi.base-url:https://www.searchapi.io/api/v1/search}")
-    private String baseUrl;
-
-    @Value("${searchapi.gl:sa}")
-    private String countryCode;
-
-    @Value("${searchapi.hl:en}")
-    private String languageCode;
-//    public List<ProductSearchResultDTOOut> searchProducts(Long giftPlanId) {
-//        GiftPlan giftPlan = giftPlanRepository.findGiftPlanById(giftPlanId)
-//                .orElseThrow(() -> new ApiException("Gift plan not found."));
-//
-//        GiftIdeaRecommendation selectedIdea = giftIdeaRecommendationRepository
-//                .findByGiftPlanAndIsSelectedTrue(giftPlan)
-//                .orElseThrow(() -> new ApiException("Select one AI gift idea before searching products."));
-//
-//        if (selectedIdea.getSearchKeyword() == null || selectedIdea.getSearchKeyword().isBlank()) {
-//            throw new ApiException("Selected gift idea has no search keyword.");
-//        }
-//
-//        if (apiKey == null || apiKey.isBlank()) {
-//            throw new ApiException(
-//                    "SearchAPI.io is not configured. Add searchapi.api.key to application-local.properties.");
-//        }
-//
-//        URI requestUri = buildSearchUri(selectedIdea.getSearchKeyword(), giftPlan.getBudgetMinor(), giftPlan.getCurrency());
-//
-//        try {
-//            HttpRequest request = HttpRequest.newBuilder()
-//                    .uri(requestUri)
-//                    .GET()
-//                    .build();
-//
-//            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-//            if (response.statusCode() < 200 || response.statusCode() >= 300) {
-//                throw new ApiException("SearchAPI.io error: HTTP " + response.statusCode() + " — " + response.body());
-//            }
-//
-//            JsonNode root = JSON.readTree(response.body());
-//            JsonNode shoppingResults = root.path("shopping_results");
-//            if (!shoppingResults.isArray()) {
-//                return List.of();
-//            }
-//
-//            List<ProductSearchResultDTOOut> results = new ArrayList<>();
-//            for (JsonNode item : shoppingResults) {
-//                ProductSearchResultDTOOut mapped = mapShoppingResult(item, giftPlan.getCurrency());
-//                if (mapped != null) {
-//                    results.add(mapped);
-//                }
-//            }
-//            return results;
-//        } catch (ApiException ex) {
-//            throw ex;
-//        } catch (InterruptedException ex) {
-//            Thread.currentThread().interrupt();
-//            throw new ApiException("Product search interrupted.");
-//        } catch (Exception ex) {
-//            throw new ApiException("Product search failed: " + ex.getMessage());
-//        }
-//    }
-
-//    @Transactional
-//    public SelectedProductDTOOut selectProduct(Long giftPlanId, ProductSelectDTOIn request) {
-//        GiftPlan giftPlan = giftPlanRepository.findGiftPlanById(giftPlanId)
-//                .orElseThrow(() -> new ApiException("Gift plan not found."));
-//
-//        GiftIdeaRecommendation selectedIdea = giftIdeaRecommendationRepository
-//                .findByGiftPlanAndIsSelectedTrue(giftPlan)
-//                .orElseThrow(() -> new ApiException("Select one AI gift idea before selecting a product."));
-//
-//        if (selectedIdea.getSelectedProducts().isEmpty()) {
-//            throw new ApiException("A product is already selected for this gift plan.");
-//        }
-//        if (selectedIdea.getSelectedProducts().size() > 1) {
-//            throw new ApiException("You can only select 1 product for this gift plan.");
-//        }
-//
-//        SelectedProduct selectedProduct = new SelectedProduct();
-//        selectedProduct.setGiftIdeaRecommendation(selectedIdea);
-//        selectedProduct.setProductName(request.getTitle());
-//        selectedProduct.setPrice(request.getPriceMinor());
-//        selectedProduct.setCurrency(request.getCurrency() != null ? request.getCurrency() : giftPlan.getCurrency());
-//        selectedProduct.setImageUrl(request.getImageUrl());
-//        selectedProduct.setProductUrl(request.getProductUrl());
-//        selectedProduct.setStoreName(request.getSourceName());
-//        selectedProduct.setRating(request.getRating());
-//        selectedProduct.setCreatedAt(LocalDateTime.now());
-//        selectedProduct = selectedProductRepository.save(selectedProduct);
-//
-//        giftPlan.setStatus("PRODUCT_SELECTED");
-//        giftPlan.setUpdatedAt(LocalDateTime.now());
-//        giftPlanRepository.save(giftPlan);
-//
-//        return toSelectedProductDto(selectedProduct);
-//    }
 
     @Transactional
     public void selectProduct(Long userId ,Long productId) {
@@ -188,9 +87,12 @@ public class ProductSearchService {
 
 
 
-    public SelectedProductDTOOut getSelectedProduct(Long giftPlanId) {
+    public SelectedProductDTOOut getSelectedProduct(Long userId, Long giftPlanId) {
         GiftPlan giftPlan = giftPlanRepository.findGiftPlanById(giftPlanId)
                 .orElseThrow(() -> new ApiException("Gift plan not found."));
+        if (!giftPlan.getUser().getId().equals(userId)) {
+            throw new ApiException("Gift plan not found.");
+        }
 
         SelectedProduct selectedProduct = selectedProductRepository
                 .findSelectedProductByGiftPlan(giftPlan);
@@ -202,21 +104,38 @@ public class ProductSearchService {
         return toSelectedProductDto(selectedProduct);
     }
 
-    private URI buildSearchUri(String query, Long budgetMinor, String currency) {
-        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(baseUrl)
-                .queryParam("engine", "google_shopping")
-                .queryParam("q", query)
-                .queryParam("api_key", apiKey)
-                .queryParam("gl", "sa")
-                .queryParam("hl", "ar");
-
-        if (budgetMinor != null && budgetMinor > 0) {
-            builder.queryParam("price_max", budgetMinor / 100.0);
+    /**
+     * Clears the chosen product for a gift plan so the user can search and pick again.
+     * Resets the plan status back to GIFT_IDEA_SELECTED.
+     */
+    @Transactional
+    public void clearSelectedProduct(Long userId, Long giftPlanId) {
+        GiftPlan giftPlan = giftPlanRepository.findGiftPlanById(giftPlanId)
+                .orElseThrow(() -> new ApiException("Gift plan not found."));
+        if (!giftPlan.getUser().getId().equals(userId)) {
+            throw new ApiException("Gift plan is not yours");
         }
 
-        return builder.build(true).toUri();
+        SelectedProduct selectedProduct = selectedProductRepository
+                .findSelectedProductByGiftPlan(giftPlan);
+        if (selectedProduct == null) {
+            throw new ApiException("No product selected yet for this gift plan.");
+        }
+
+        // break the link on both sides before removing the row
+        giftPlan.setSelectedProduct(null);
+        selectedProduct.setGiftPlan(null);
+        selectedProductRepository.delete(selectedProduct);
+        selectedProductRepository.flush();
+
+        if ("PRODUCT_SELECTED".equals(giftPlan.getStatus())) {
+            giftPlan.setStatus("GIFT_IDEA_SELECTED");
+        }
+        giftPlan.setUpdatedAt(LocalDateTime.now());
+        giftPlanRepository.save(giftPlan);
     }
 
+   
     private ProductSearchResultDTOOut mapShoppingResult(JsonNode item, String defaultCurrency) {
         String title = item.path("title").asString(null);
         String productUrl = item.path("link").asString(null);
