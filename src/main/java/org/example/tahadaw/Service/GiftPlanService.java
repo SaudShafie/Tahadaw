@@ -7,6 +7,7 @@ import org.example.tahadaw.DTO.OUT.GiftPlanSummeryDTOOut;
 import org.example.tahadaw.DTO.OUT.RecipientDTOOut;
 import org.example.tahadaw.DTO.OUT.SelectedProductSummeryDTOOut;
 import org.example.tahadaw.Model.*;
+import org.example.tahadaw.Repository.GiftMessageRepository;
 import org.example.tahadaw.Repository.GiftPlanRepository;
 import org.example.tahadaw.Repository.RecipientRepository;
 import org.example.tahadaw.Repository.UserRepository;
@@ -24,6 +25,7 @@ public class GiftPlanService {
     private final GiftPlanRepository giftPlanRepository;
     private final UserRepository userRepository;
     private final RecipientRepository recipientRepository;
+    private final GiftMessageRepository giftMessageRepository;
 
     public List<GiftPlan> listByUser(Long userId) {
         userRepository.findUserById(userId)
@@ -42,7 +44,7 @@ public class GiftPlanService {
         GiftPlan giftPlan = new GiftPlan();
         giftPlan.setOccasionType(request.getOccasionType());
         giftPlan.setOccasionDate(request.getOccasionDate());
-        giftPlan.setBudgetMinor(request.getBudgetMinor());
+        giftPlan.setBudget(request.getBudget());
         giftPlan.setCurrency(request.getCurrency());
         giftPlan.setPreferredGiftStyle(request.getPreferredGiftStyle());
         giftPlan.setLanguage(request.getLanguage());
@@ -60,7 +62,7 @@ public class GiftPlanService {
         GiftPlan giftPlan = requireOwnedGiftPlan(userId, id);
         giftPlan.setOccasionType(request.getOccasionType());
         giftPlan.setOccasionDate(request.getOccasionDate());
-        giftPlan.setBudgetMinor(request.getBudgetMinor());
+        giftPlan.setBudget(request.getBudget());
         giftPlan.setCurrency(request.getCurrency());
         giftPlan.setPreferredGiftStyle(request.getPreferredGiftStyle());
         giftPlan.setLanguage(request.getLanguage());
@@ -113,13 +115,19 @@ public class GiftPlanService {
             );
         }
 
+        String message = giftMessageRepository
+                .findFirstByGiftPlan_IdOrderByCreatedAtDesc(giftPlan.getId())
+                .map(GiftMessage::getMessageText)
+                .orElse(null);
+
         return new GiftPlanSummeryDTOOut(
                 giftPlan.getId(),
                 giftPlan.getOccasionType(),
                 giftPlan.getOccasionDate(),
                 recipientDto,
-                giftPlan.getBudgetMinor(),
-                selectedProductDto
+                giftPlan.getBudget(),
+                selectedProductDto,
+                message
         );
     }
 

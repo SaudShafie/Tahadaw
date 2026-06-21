@@ -6,6 +6,7 @@ import org.example.tahadaw.DTO.IN.UserDTOIn;
 import org.example.tahadaw.DTO.OUT.UserDTOOut;
 import org.example.tahadaw.Model.User;
 import org.example.tahadaw.Repository.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -17,6 +18,7 @@ import java.util.List;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
 
     public void addUser(UserDTOIn userDTOIn) {
@@ -32,7 +34,7 @@ public class UserService {
         User user = new User();
 
         user.setUsername(userDTOIn.getUsername());
-        user.setPassword(userDTOIn.getPassword());
+        user.setPassword(passwordEncoder.encode(userDTOIn.getPassword()));
         user.setFullName(userDTOIn.getFullName());
         user.setEmail(userDTOIn.getEmail());
         user.setPhoneNumber(userDTOIn.getPhoneNumber());
@@ -81,7 +83,7 @@ public class UserService {
         }
 
         user.setUsername(userDTOIn.getUsername());
-        user.setPassword(userDTOIn.getPassword());
+        user.setPassword(passwordEncoder.encode(userDTOIn.getPassword()));
         user.setFullName(userDTOIn.getFullName());
         user.setEmail(userDTOIn.getEmail());
         user.setPhoneNumber(userDTOIn.getPhoneNumber());

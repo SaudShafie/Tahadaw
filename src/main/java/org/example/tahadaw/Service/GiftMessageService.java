@@ -5,12 +5,16 @@ import org.example.tahadaw.AI.AiJsonParser;
 import org.example.tahadaw.AI.AiService;
 import org.example.tahadaw.Api.ApiException;
 import org.example.tahadaw.DTO.IN.GiftMessageCreateDTOIn;
+import org.example.tahadaw.DTO.IN.GiftMessageFromPlanDTOIn;
 import org.example.tahadaw.DTO.IN.GiftMessageGenerateDTOIn;
 import org.example.tahadaw.DTO.IN.GiftMessageUpdateDTOIn;
 import org.example.tahadaw.DTO.OUT.GiftMessageDTOOut;
 import org.example.tahadaw.Model.GiftMessage;
+import org.example.tahadaw.Model.GiftPlan;
+import org.example.tahadaw.Model.Recipient;
 import org.example.tahadaw.Model.User;
 import org.example.tahadaw.Repository.GiftMessageRepository;
+import org.example.tahadaw.Repository.GiftPlanRepository;
 import org.example.tahadaw.Repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +29,7 @@ public class GiftMessageService {
 
     private final GiftMessageRepository giftMessageRepository;
     private final UserRepository userRepository;
+    private final GiftPlanRepository giftPlanRepository;
     private final AiService aiService;
 
     /**
@@ -47,6 +52,65 @@ public class GiftMessageService {
 
         GiftMessage giftMessage = new GiftMessage();
         giftMessage.setUser(user);
+        giftMessage.setTone(tone);
+        giftMessage.setLanguage(language);
+        giftMessage.setMessageText(messageText);
+        giftMessage.setCreatedAt(LocalDateTime.now());
+
+        return toDto(giftMessageRepository.save(giftMessage));
+    }
+
+    /**
+     * AI writes a message using the details pulled from an existing gift plan
+     * (recipient, occasion and the chosen gift). Mirrors {@link #generate} but the
+     * context is derived from the plan instead of the request body.
+     */
+    @Transactional
+    public GiftMessageDTOOut generateFromPlan(Long userId, Long giftPlanId, GiftMessageFromPlanDTOIn request) {
+        User user = requireUser(userId);
+
+        GiftPlan plan = giftPlanRepository.findGiftPlanById(giftPlanId)
+                .orElseThrow(() -> new ApiException("Gift plan not found."));
+        if (plan.getUser() == null || !plan.getUser().getId().equals(userId)) {
+            throw new ApiException("Gift plan not found.");
+        }
+
+        Recipient recipient = plan.getRecipient();
+        if (recipient == null || recipient.getName() == null || recipient.getName().isBlank()) {
+            throw new ApiException("This gift plan has no recipient to address the message to.");
+        }
+        if (plan.getOccasionType() == null || plan.getOccasionType().isBlank()) {
+            throw new ApiException("This gift plan has no occasion to base the message on.");
+        }
+
+        String tone = request != null && request.getTone() != null && !request.getTone().isBlank()
+                ? request.getTone().trim()
+                : "warm";
+        String language;
+        if (request != null && request.getLanguage() != null && !request.getLanguage().isBlank()) {
+            language = request.getLanguage().trim();
+        } else if (plan.getLanguage() != null && !plan.getLanguage().isBlank()) {
+            language = plan.getLanguage().trim();
+        } else {
+            language = "en";
+        }
+
+        GiftMessageGenerateDTOIn context = new GiftMessageGenerateDTOIn();
+        context.setRecipientName(recipient.getName());
+        context.setRelationship(recipient.getRelationship());
+        context.setOccasion(plan.getOccasionType());
+        context.setGiftName(resolveGiftName(plan));
+        context.setTone(tone);
+        context.setLanguage(language);
+        context.setDialect(request != null ? request.getDialect() : null);
+
+        String prompt = buildPrompt(context, tone, language);
+        JsonNode aiResponse = AiJsonParser.parseObject(aiService.ask(prompt));
+        String messageText = AiJsonParser.requireText(aiResponse, "messageText");
+
+        GiftMessage giftMessage = new GiftMessage();
+        giftMessage.setUser(user);
+        giftMessage.setGiftPlan(plan);
         giftMessage.setTone(tone);
         giftMessage.setLanguage(language);
         giftMessage.setMessageText(messageText);
@@ -113,6 +177,24 @@ public class GiftMessageService {
 
     public GiftMessageDTOOut getOne(Long userId, Long messageId) {
         return toDto(requireOwnedMessage(userId, messageId));
+    }
+
+    /**
+     * Picks the best gift name available on the plan: the selected product first,
+     * then the selected gift idea. Returns null when nothing has been chosen yet.
+     */
+    private String resolveGiftName(GiftPlan plan) {
+        if (plan.getSelectedProduct() != null
+                && plan.getSelectedProduct().getProductName() != null
+                && !plan.getSelectedProduct().getProductName().isBlank()) {
+            return plan.getSelectedProduct().getProductName().trim();
+        }
+        if (plan.getSelectedGiftIdea() != null
+                && plan.getSelectedGiftIdea().getProductName() != null
+                && !plan.getSelectedGiftIdea().getProductName().isBlank()) {
+            return plan.getSelectedGiftIdea().getProductName().trim();
+        }
+        return null;
     }
 
     private User requireUser(Long userId) {

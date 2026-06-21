@@ -7,8 +7,10 @@ import org.example.tahadaw.DTO.IN.RequiredQuestionAnswersSubmitDTOIn;
 import org.example.tahadaw.DTO.OUT.RequiredQuestionAnswerDTOOut;
 import org.example.tahadaw.DTO.OUT.RequiredQuestionDTOOut;
 import org.example.tahadaw.Model.RequiredQuestion;
+import org.example.tahadaw.Model.User;
 import org.example.tahadaw.Service.RequiredQuestionService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -50,10 +52,10 @@ public class RequiredQuestionController {
         return ResponseEntity.status(200).body(new ApiResponse("Required question disabled successfully"));
     }
 
-    @GetMapping("/required-questions/{userId}/{giftPlanId}")
-    public ResponseEntity<List<RequiredQuestionDTOOut>> listRequiredQuestions(@PathVariable Long userId,
+    @GetMapping("/required-questions/{giftPlanId}")
+    public ResponseEntity<List<RequiredQuestionDTOOut>> listRequiredQuestions(@AuthenticationPrincipal User user,
                                                                               @PathVariable Long giftPlanId) {
-        return ResponseEntity.ok(requiredQuestionService.listActiveForGiftPlan(userId, giftPlanId));
+        return ResponseEntity.ok(requiredQuestionService.listActiveForGiftPlan(user.getId(), giftPlanId));
     }
 
 

@@ -6,8 +6,10 @@ import org.example.tahadaw.Api.ApiResponse;
 import org.example.tahadaw.DTO.IN.GiftHistoryLogDTOIn;
 import org.example.tahadaw.DTO.OUT.GiftHistoryDTOOut;
 import org.example.tahadaw.DTO.OUT.GiftHistorySummaryDTOOut;
+import org.example.tahadaw.Model.User;
 import org.example.tahadaw.Service.GiftHistoryService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,39 +22,39 @@ public class GiftHistoryController {
     private final GiftHistoryService giftHistoryService;
 
     @PostMapping("/from-product/{selectedProductId}")
-    public ResponseEntity<GiftHistoryDTOOut> logFromProduct(@RequestParam Long userId,
+    public ResponseEntity<GiftHistoryDTOOut> logFromProduct(@AuthenticationPrincipal User user,
                                                             @PathVariable Long selectedProductId,
                                                             @Valid @RequestBody GiftHistoryLogDTOIn request) {
-        return ResponseEntity.ok(giftHistoryService.logFromProduct(userId, selectedProductId, request));
+        return ResponseEntity.ok(giftHistoryService.logFromProduct(user.getId(), selectedProductId, request));
     }
 
     @PutMapping("/from-product/{selectedProductId}")
-    public ResponseEntity<GiftHistoryDTOOut> editLog(@RequestParam Long userId,
+    public ResponseEntity<GiftHistoryDTOOut> editLog(@AuthenticationPrincipal User user,
                                                      @PathVariable Long selectedProductId,
                                                      @Valid @RequestBody GiftHistoryLogDTOIn request) {
-        return ResponseEntity.ok(giftHistoryService.editLog(userId, selectedProductId, request));
+        return ResponseEntity.ok(giftHistoryService.editLog(user.getId(), selectedProductId, request));
     }
 
     @DeleteMapping("/from-product/{selectedProductId}")
-    public ResponseEntity<ApiResponse> deleteLog(@RequestParam Long userId,
+    public ResponseEntity<ApiResponse> deleteLog(@AuthenticationPrincipal User user,
                                                  @PathVariable Long selectedProductId) {
-        giftHistoryService.deleteLog(userId, selectedProductId);
+        giftHistoryService.deleteLog(user.getId(), selectedProductId);
         return ResponseEntity.ok(new ApiResponse("Gift history log deleted."));
     }
 
     @GetMapping("/from-product/{selectedProductId}")
-    public ResponseEntity<GiftHistoryDTOOut> getByProduct(@RequestParam Long userId,
+    public ResponseEntity<GiftHistoryDTOOut> getByProduct(@AuthenticationPrincipal User user,
                                                           @PathVariable Long selectedProductId) {
-        return ResponseEntity.ok(giftHistoryService.getByProduct(userId, selectedProductId));
+        return ResponseEntity.ok(giftHistoryService.getByProduct(user.getId(), selectedProductId));
     }
 
     @GetMapping("/my")
-    public ResponseEntity<List<GiftHistoryDTOOut>> listMine(@RequestParam Long userId) {
-        return ResponseEntity.ok(giftHistoryService.listMine(userId));
+    public ResponseEntity<List<GiftHistoryDTOOut>> listMine(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(giftHistoryService.listMine(user.getId()));
     }
 
     @GetMapping("/summary")
-    public ResponseEntity<GiftHistorySummaryDTOOut> summary(@RequestParam Long userId) {
-        return ResponseEntity.ok(giftHistoryService.summary(userId));
+    public ResponseEntity<GiftHistorySummaryDTOOut> summary(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(giftHistoryService.summary(user.getId()));
     }
 }

@@ -40,7 +40,7 @@ public class Payment {
     @Column(columnDefinition = "varchar(50)")
     private String provider;
 
-    @Column(columnDefinition = "varchar(100)")
+    @Column(columnDefinition = "varchar(100)", unique = true)
     private String transactionId;
 
     @Column(updatable = false, columnDefinition = "datetime not null")

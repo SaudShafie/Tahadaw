@@ -17,7 +17,6 @@ import org.example.tahadaw.Repository.RequiredQuestionAnswerRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -47,7 +46,7 @@ public class AiAnswerService {
         AiQuestionAnswer aiQuestionAnswer = new AiQuestionAnswer();
         aiQuestionAnswer.setAnswerText(request.getAnswerText());
         aiQuestionAnswer.setAiGeneratedQuestion(aiGeneratedQuestion);
-        aiQuestionAnswer.setCreatedAt(LocalDate.now());
+        aiQuestionAnswer.setCreatedAt(LocalDateTime.now());
 
         aiQuestionAnswerRepository.save(aiQuestionAnswer);
     }
@@ -105,7 +104,6 @@ public class AiAnswerService {
             }
         }
 
-        LocalDate today = LocalDate.now();
         LocalDateTime now = LocalDateTime.now();
         for (AiQuestionAnswerItemDTOIn item : request.getAnswers()) {
             AiGeneratedQuestion question = aiGeneratedQuestionRepository
@@ -125,7 +123,7 @@ public class AiAnswerService {
             answer.setAiGeneratedQuestion(question);
             answer.setAnswerText(item.getAnswerText());
             if (answer.getCreatedAt() == null) {
-                answer.setCreatedAt(today);
+                answer.setCreatedAt(now);
             }
             aiQuestionAnswerRepository.save(answer);
         }

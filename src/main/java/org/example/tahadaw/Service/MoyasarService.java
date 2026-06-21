@@ -27,6 +27,10 @@ public class MoyasarService {
     @Value("${moyasar.api-url:https://api.moyasar.com/v1/payments}")
     private String apiUrl;
 
+    // Where Moyasar redirects the browser after 3-D Secure (a static result page).
+    @Value("${moyasar.callback-url:https://saudshafie.github.io/Tahadawpayment/}")
+    private String defaultCallbackUrl;
+
     public JsonNode createCardPayment(String name,
                                       String number,
                                       String cvc,
@@ -43,7 +47,7 @@ public class MoyasarService {
 
         String resolvedCallback = callbackUrl != null && !callbackUrl.isBlank()
                 ? callbackUrl
-                : "http://localhost:8080/api/v1/payments/webhook/moyasar";
+                : defaultCallbackUrl;
 
         String requestBody = "source[type]=card"
                 + "&source[name]=" + encode(name)

@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class EmailService {
 
-    private static final String SYSTEM_NAME = "Tahadaw";
+    private static final String SYSTEM_NAME = "تهادوا";
     private static final String GIFT_CARD_CID = "giftCardImage";
 
     private final JavaMailSender mailSender;
@@ -76,14 +76,15 @@ public class EmailService {
         );
     }
 
-    public void sendGroupGiftInviteEmail(GroupGiftInvite invite, GroupGift groupGift, String voteUrl) {
-        String subject = SYSTEM_NAME + " — Group Gift Vote";
+    //Bayan
+    public void sendGroupGiftInviteEmail(GroupGiftInvite invite, GroupGift groupGift) {
+        String subject = SYSTEM_NAME + " — دعوة للتصويت على هدية جماعية";
 
         sendHtmlEmail(
                 invite.getInviteeEmail(),
                 subject,
-                EmailHtmlTemplates.buildGroupGiftInviteHtml(invite, groupGift, voteUrl),
-                EmailHtmlTemplates.buildGroupGiftInvitePlainText(invite, groupGift, voteUrl)
+                EmailHtmlTemplates.buildGroupGiftInviteHtml(invite, groupGift),
+                EmailHtmlTemplates.buildGroupGiftInvitePlainText(invite, groupGift)
         );
     }
 

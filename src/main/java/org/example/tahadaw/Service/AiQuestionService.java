@@ -126,6 +126,86 @@ public class AiQuestionService {
         return aiGeneratedQuestion;
     }
 
+    /**
+     * Throws away the current AI questions (and any answers to them) and asks the AI
+     * for a fresh set. Unlike {@link #generateQuestions} this does not block when
+     * questions already exist; it replaces them and resets the plan back to
+     * AI_QUESTIONS_GENERATED so the user answers the new batch.
+     */
+    @Transactional
+    public List<AiGeneratedQuestionDTOOut> regenerateQuestions(Long userId, Long giftPlanId) {
+        GiftPlan giftPlan = requireOwnedGiftPlan(userId, giftPlanId);
+
+        List<AiGeneratedQuestion> existing =
+                aiGeneratedQuestionRepository.findByGiftPlan_IdOrderByDisplayOrderAsc(giftPlanId);
+
+        // remember what was already asked so we can tell the AI not to repeat it
+        List<String> previousQuestions = new ArrayList<>();
+        for (AiGeneratedQuestion question : existing) {
+            if (question.getQuestionText() != null && !question.getQuestionText().isBlank()) {
+                previousQuestions.add(question.getQuestionText());
+            }
+        }
+
+        if (!existing.isEmpty()) {
+            List<AiQuestionAnswer> oldAnswers =
+                    aiQuestionAnswerRepository.findByAiGeneratedQuestion_GiftPlan_IdOrderByCreatedAtAsc(giftPlanId);
+            if (!oldAnswers.isEmpty()) {
+                aiQuestionAnswerRepository.deleteAll(oldAnswers);
+            }
+            aiGeneratedQuestionRepository.deleteAll(existing);
+            aiGeneratedQuestionRepository.flush();
+        }
+
+        String prompt = buildRegeneratePrompt(giftPlan, previousQuestions);
+        JsonNode root = AiJsonParser.parseObject(aiService.ask(prompt));
+        JsonNode questionsNode = root.get("questions");
+
+        if (questionsNode == null || !questionsNode.isArray() || questionsNode.isEmpty()) {
+            throw new ApiException("AI did not return any questions.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        List<AiGeneratedQuestionDTOOut> regenerated = new ArrayList<>();
+        int order = 0;
+        for (JsonNode questionNode : questionsNode) {
+            AiGeneratedQuestion question = new AiGeneratedQuestion();
+            question.setGiftPlan(giftPlan);
+            question.setQuestionText(AiJsonParser.requireText(questionNode, "questionText"));
+            question.setReasonForQuestion(AiJsonParser.requireText(questionNode, "reasonForQuestion"));
+            question.setCreatedAt(now);
+            question.setDisplayOrder(order++);
+            regenerated.add(toQuestionDto(aiGeneratedQuestionRepository.save(question)));
+        }
+
+        giftPlan.setStatus("AI_QUESTIONS_GENERATED");
+        giftPlan.setUpdatedAt(now);
+        giftPlanRepository.save(giftPlan);
+
+        return regenerated;
+    }
+
+    /**
+     * Same context prompt as {@link #buildPrompt}, plus an explicit instruction not to
+     * repeat any of the previously generated questions.
+     */
+    private String buildRegeneratePrompt(GiftPlan giftPlan, List<String> previousQuestions) {
+        String basePrompt = buildPrompt(giftPlan);
+
+        if (previousQuestions == null || previousQuestions.isEmpty()) {
+            return basePrompt;
+        }
+
+        StringBuilder exclude = new StringBuilder();
+        exclude.append("\nDo not repeat any of these previously asked questions:\n");
+        for (String previous : previousQuestions) {
+            exclude.append("- ").append(previous).append('\n');
+        }
+        exclude.append("Ask different questions this time.\n");
+
+        return basePrompt + exclude;
+    }
+
     public List<AiGeneratedQuestionDTOOut> listQuestions(Long userId, Long giftPlanId) {
         requireOwnedGiftPlan(userId, giftPlanId);
 
@@ -187,7 +267,7 @@ public class AiQuestionService {
         if (giftPlan.getOccasionDate() != null) {
             context.append("Occasion date: ").append(giftPlan.getOccasionDate()).append('\n');
         }
-        context.append("Budget: ").append(giftPlan.getBudgetMinor()).append('\n');
+        context.append("Budget: ").append(giftPlan.getBudget()).append('\n');
         context.append("Currency: ").append(giftPlan.getCurrency()).append('\n');
         if (giftPlan.getPreferredGiftStyle() != null) {
             context.append("Preferred gift style: ").append(giftPlan.getPreferredGiftStyle()).append('\n');

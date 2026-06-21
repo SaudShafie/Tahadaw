@@ -38,7 +38,7 @@ public class GiftPlan {
     private LocalDate occasionDate;
 
     @Column(columnDefinition = "bigint not null")
-    private Long budgetMinor;
+    private Long budget;
 
     @Column(columnDefinition = "varchar(3) not null")
     private String currency;
@@ -88,4 +88,8 @@ public class GiftPlan {
     @OneToMany(mappedBy = "giftPlan", cascade = CascadeType.ALL)
     @JsonIgnore
     private Set<Reminder> reminders;
+
+    @OneToMany(mappedBy = "giftPlan", cascade = CascadeType.ALL)
+    @JsonIgnore
+    private Set<GiftMessage> giftMessages;
 }

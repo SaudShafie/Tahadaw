@@ -18,7 +18,8 @@ public class GiftPlanSummeryDTOOut {
     private String occasionType;
     private LocalDate occasionDate;
     private RecipientDTOOut recipient;
-    private Long budgetMinor;
+    private Long budget;
     private SelectedProductSummeryDTOOut selectedGiftIdeaId;
+    private String message;
 
 }

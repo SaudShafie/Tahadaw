@@ -26,6 +26,7 @@ public class GiftRecommendationService {
     private final GiftIdeaRecommendationRepository giftIdeaRecommendationRepository;
     private final GiftPlanRepository giftPlanRepository;
     private final RequiredQuestionAnswerRepository requiredQuestionAnswerRepository;
+    private final GiftHistoryRepository giftHistoryRepository;
     private final AiService aiService;
     private final AiAnswerService aiAnswerService;
     private final ModelMapper modelMapper;
@@ -58,6 +59,38 @@ public class GiftRecommendationService {
         giftPlanRepository.save(giftPlan);
     }
 
+    /**
+     * Reverses {@link #selectRecommendation}: clears the chosen gift idea and resets the
+     * plan back to RECOMMENDATIONS_GENERATED so the user can pick a different idea.
+     * Blocked once a product has been selected — the product must be cleared first.
+     */
+    @Transactional
+    public void unselectRecommendation(Long userId, Long recommendationId) {
+        GiftIdeaRecommendation recommendation = giftIdeaRecommendationRepository.findGiftIdeaRecommendationById(recommendationId)
+                .orElseThrow(() -> new ApiException("Gift idea recommendation not found."));
+
+        GiftPlan giftPlan = recommendation.getGiftPlan();
+        if (!giftPlan.getUser().getId().equals(userId)) {
+            throw new ApiException("Gift plan is not yours");
+        }
+
+        if (recommendation.getIsSelected() == null || !recommendation.getIsSelected()) {
+            throw new ApiException("This gift idea is not selected.");
+        }
+
+        if ("PRODUCT_SELECTED".equals(giftPlan.getStatus()) || giftPlan.getSelectedProduct() != null) {
+            throw new ApiException("A product is already selected. Remove the selected product before changing the gift idea.");
+        }
+
+        recommendation.setIsSelected(false);
+        giftIdeaRecommendationRepository.save(recommendation);
+
+        giftPlan.setSelectedGiftIdea(null);
+        giftPlan.setStatus("RECOMMENDATIONS_GENERATED");
+        giftPlan.setUpdatedAt(LocalDateTime.now());
+        giftPlanRepository.save(giftPlan);
+    }
+
     public List<GiftIdeaRecommendation> generateGiftRecommendation(Long userId, Long giftPlanId) {
 
 
@@ -71,7 +104,6 @@ public class GiftRecommendationService {
 
         String response= aiService.ask(prompt);
         ObjectMapper mapper = new ObjectMapper();
-        System.out.println(response);
         JsonNode rootNode = mapper.readTree(response);
 
         JsonNode recommendationsNode = rootNode.get("recommendations");
@@ -231,7 +263,7 @@ public class GiftRecommendationService {
         if (giftPlan.getOccasionDate() != null) {
             context.append("Occasion date: ").append(giftPlan.getOccasionDate()).append('\n');
         }
-        context.append("Budget minor units: ").append(giftPlan.getBudgetMinor()).append('\n');
+        context.append("Budget minor units: ").append(giftPlan.getBudget()).append('\n');
         context.append("Currency: ").append(giftPlan.getCurrency()).append('\n');
         if (giftPlan.getPreferredGiftStyle() != null) {
             context.append("Preferred gift style: ").append(giftPlan.getPreferredGiftStyle()).append('\n');
@@ -258,6 +290,23 @@ public class GiftRecommendationService {
             }
         }
 
+        // gifts this recipient has already received, so the AI avoids repeating them
+        List<GiftHistory> pastGifts = giftHistoryRepository
+                .findByRecipient_IdAndUser_IdOrderByCreatedAtDesc(recipient.getId(), giftPlan.getUser().getId());
+        if (!pastGifts.isEmpty()) {
+            context.append("\nGifts the recipient already received (do not suggest these again):\n");
+            for (GiftHistory pastGift : pastGifts) {
+                if (pastGift.getGiftName() == null || pastGift.getGiftName().isBlank()) {
+                    continue;
+                }
+                context.append("- ").append(pastGift.getGiftName());
+                if (pastGift.getOccasionType() != null && !pastGift.getOccasionType().isBlank()) {
+                    context.append(" (").append(pastGift.getOccasionType()).append(')');
+                }
+                context.append('\n');
+            }
+        }
+
         return """
                  suggest gifts based on the context below.
                 Return JSON only in this exact shape:
@@ -266,7 +315,7 @@ public class GiftRecommendationService {
                        {
                          "productName": "string",
                          "category": "string",
-                         "priceBand": "string",
+                         "priceBand": "string (a realistic price RANGE as \"min - max CURRENCY\", e.g. \"350 - 450 SAR\")",
                          "reason": "string",
                          "emotionalFit": "string",
                          "practicalFit": "string",
@@ -279,8 +328,13 @@ public class GiftRecommendationService {
                 Rules:
                 - Generate 3 to 5 suggested gifts
                 - gifts must be relevant to the recipient and occasion
+                - do not suggest any gift the recipient already received (see the list in the context)
                 - the response should be in Arabic language
-
+                - the suggested gifts should be real product
+                - priceBand MUST be a realistic price RANGE (minimum - maximum) for that exact real product, based on its actual current retail market price
+                - base the price on real-world prices for the named product; do NOT invent, guess randomly, or use placeholder/round fake numbers
+                - the price range must be in the same currency given in the context, and stay within the recipient's budget
+                - keep the range tight and credible (the max should not exceed the min by more than ~30%%)
                 Context:
                 %s
                 """.formatted(context);
@@ -298,16 +352,12 @@ public class GiftRecommendationService {
         return giftPlan;
     }
 
-    public GiftIdeaRecommendation getSelectedRecommendation(Long giftPlanId) {
-        GiftPlan giftPlan = giftPlanRepository.findGiftPlanById(giftPlanId)
-                .orElseThrow(() -> new ApiException("Gift plan not found."));
+    public GiftIdeaRecommendation getSelectedRecommendation(Long userId, Long giftPlanId) {
+        GiftPlan giftPlan = requireOwnedGiftPlan(userId, giftPlanId);
 
-        GiftIdeaRecommendation selectedIdea = giftIdeaRecommendationRepository
+        return giftIdeaRecommendationRepository
                 .findByGiftPlanAndIsSelectedTrue(giftPlan)
                 .orElseThrow(() -> new ApiException("You have not select any Recommendation for this gift plan."));
-
-
-        return selectedIdea;
     }
 
 

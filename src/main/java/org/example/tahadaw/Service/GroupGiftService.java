@@ -9,6 +9,8 @@ import org.example.tahadaw.DTO.IN.GroupGiftUpdateDTOIn;
 import org.example.tahadaw.DTO.OUT.GroupGiftDTOOut;
 import org.example.tahadaw.Model.*;
 import org.example.tahadaw.Repository.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.webmvc.autoconfigure.WebMvcProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +25,8 @@ import java.util.*;
 @RequiredArgsConstructor
 public class GroupGiftService {
 
+    private static final Logger log = LoggerFactory.getLogger(GroupGiftService.class);
+
     private final GroupGiftRepository groupGiftRepository;
     private final UserRepository userRepository;
     private final RecipientRepository recipientRepository;
@@ -30,6 +34,7 @@ public class GroupGiftService {
     private final AiService aiService;
     private final GroupGiftInviteRepository groupGiftInviteRepository;
     private final GroupGiftVoteRepository groupGiftVoteRepository;
+    private final EmailService emailService;
 
     @Transactional
     public GroupGiftDTOOut create(Long userId, GroupGiftCreateDTOIn request) {
@@ -87,9 +92,8 @@ public class GroupGiftService {
         if (request.getVotingDeadline() != null) {
             groupGift.setVotingDeadline(request.getVotingDeadline());
         }
-        if (request.getStatus() != null) {
-            groupGift.setStatus(request.getStatus());
-        }
+        // status is intentionally NOT editable here; it is owned by the voting
+        // state machine (OPEN on create -> CLOSED via closeVoting).
 
         return toDto(groupGiftRepository.save(groupGift));
     }
@@ -161,6 +165,7 @@ public class GroupGiftService {
 
 
     //Bayan
+    @Transactional
     public void generateAiOptions(Long userId, Long groupGiftId) {
 
         User user = userRepository.findUserById(userId)
@@ -216,69 +221,72 @@ public class GroupGiftService {
     private String buildGroupGiftOptionsPrompt(GroupGift groupGift, Recipient recipient) {
 
         return """
-                You are an AI assistant that suggests gift options for a group gift voting feature.
-                
-                The user is creating a group gift poll.
-                Generate exactly 3 suitable gift options for the recipient.
-                
-                Return JSON only in this exact format.
-                
-                Important:
-                - Return one JSON object only.
-                - Keep the JSON keys exactly in English.
-                - Write all values in Arabic.
-                - Generate exactly 3 gift options.
-                - Make the options different from each other.
-                - Each option should be realistic and suitable for the recipient.
-                - priceBand should be written in Saudi Riyal.
-                - Do not add any text before or after the JSON.
-                - Do not use markdown.
-                
+            You are an AI assistant that suggests gift options for a group gift voting feature.
+            
+            The user is creating a group gift poll.
+            Generate exactly 3 suitable gift options for the recipient.
+            
+            Return JSON only in this exact format.
+            
+            Important:
+            - Return one JSON object only.
+            - Keep the JSON keys exactly in English.
+            - Write all values in Arabic.
+            - Generate exactly 3 gift options.
+            - Make the options different from each other.
+            - Each option should be realistic and suitable for the recipient.
+            - priceBand should be written in Saudi Riyal.
+            - priceBand must use Arabic-Indic digits only.
+            - priceBand format must be exactly like this: "٢٠٠ - ٣٠٠ ريال".
+            - Do not use English numbers in priceBand like 200 or 300.
+            - Do not add any text before or after the JSON.
+            - Do not use markdown.
+            
+            {
+              "options": [
                 {
-                  "options": [
-                    {
-                      "giftName": "اسم الهدية بالعربي",
-                      "description": "وصف مختصر للهدية بالعربي",
-                      "priceBand": "مثال: 200 - 300 ريال",
-                      "reason": "سبب ترشيح هذه الهدية بالعربي"
-                    },
-                    {
-                      "giftName": "اسم الهدية بالعربي",
-                      "description": "وصف مختصر للهدية بالعربي",
-                      "priceBand": "مثال: 300 - 450 ريال",
-                      "reason": "سبب ترشيح هذه الهدية بالعربي"
-                    },
-                    {
-                      "giftName": "اسم الهدية بالعربي",
-                      "description": "وصف مختصر للهدية بالعربي",
-                      "priceBand": "مثال: 150 - 250 ريال",
-                      "reason": "سبب ترشيح هذه الهدية بالعربي"
-                    }
-                  ]
+                  "giftName": "اسم الهدية بالعربي",
+                  "description": "وصف مختصر للهدية بالعربي",
+                  "priceBand": "مثال: ٢٠٠ - ٣٠٠ ريال",
+                  "reason": "سبب ترشيح هذه الهدية بالعربي"
+                },
+                {
+                  "giftName": "اسم الهدية بالعربي",
+                  "description": "وصف مختصر للهدية بالعربي",
+                  "priceBand": "مثال: ٣٠٠ - ٤٥٠ ريال",
+                  "reason": "سبب ترشيح هذه الهدية بالعربي"
+                },
+                {
+                  "giftName": "اسم الهدية بالعربي",
+                  "description": "وصف مختصر للهدية بالعربي",
+                  "priceBand": "مثال: ١٥٠ - ٢٥٠ ريال",
+                  "reason": "سبب ترشيح هذه الهدية بالعربي"
                 }
-                
-                Group gift:
-                Title: %s
-                Description: %s
-                Gift giving date: %s
-                Voting deadline: %s
-                Responsible person name: %s
-                Responsible person email: %s
-                
-                Recipient profile:
-                Name: %s
-                Relationship: %s
-                Age: %s
-                Gender: %s
-                Interests: %s
-                Hobbies: %s
-                Favorite colors: %s
-                Favorite brands: %s
-                Dislikes: %s
-                Personality style: %s
-                Size info: %s
-                Notes: %s
-                """.formatted(
+              ]
+            }
+            
+            Group gift:
+            Title: %s
+            Description: %s
+            Gift giving date: %s
+            Voting deadline: %s
+            Responsible person name: %s
+            Responsible person email: %s
+            
+            Recipient profile:
+            Name: %s
+            Relationship: %s
+            Age: %s
+            Gender: %s
+            Interests: %s
+            Hobbies: %s
+            Favorite colors: %s
+            Favorite brands: %s
+            Dislikes: %s
+            Personality style: %s
+            Size info: %s
+            Notes: %s
+            """.formatted(
                 groupGift.getTitle(),
                 groupGift.getDescription(),
                 groupGift.getGiftGivingDate(),
@@ -310,6 +318,7 @@ public class GroupGiftService {
     }
 
     //Bayan
+    @Transactional
     public List<GroupGiftInvite> sendInvites(Long userId, Long groupGiftId, List<GroupGiftInvite> invites) {
 
         User user = userRepository.findUserById(userId)
@@ -343,6 +352,16 @@ public class GroupGiftService {
             currentInvite.setCreatedAt(LocalDateTime.now());
 
             GroupGiftInvite savedInvite = groupGiftInviteRepository.save(currentInvite);
+
+            // Email delivery must not abort the whole batch: one invitee's failure
+            // (bad address, SMTP hiccup) should not block invites to the rest.
+            try {
+                emailService.sendGroupGiftInviteEmail(savedInvite, groupGift);
+            } catch (Exception e) {
+                log.warn("Failed to send group-gift invite email to {} (invite {}): {}",
+                        savedInvite.getInviteeEmail(), savedInvite.getId(), e.getMessage());
+            }
+
             result.add(savedInvite);
         }
 
@@ -383,6 +402,7 @@ public class GroupGiftService {
     }
 
     //Bayan
+    @Transactional
     public void submitVote(String token, Long optionId) {
 
         GroupGiftInvite invite = groupGiftInviteRepository.findByToken(token)

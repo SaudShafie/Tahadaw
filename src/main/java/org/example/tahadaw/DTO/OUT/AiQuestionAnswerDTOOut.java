@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
@@ -15,5 +15,5 @@ public class AiQuestionAnswerDTOOut {
     private Long aiGeneratedQuestionId;
     private String questionText;
     private String answerText;
-    private LocalDate createdAt;
+    private LocalDateTime createdAt;
 }

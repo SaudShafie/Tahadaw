@@ -11,6 +11,6 @@ import lombok.NoArgsConstructor;
 public class GroupGiftVoteDTOIn {
 
     @NotNull(message = "Option id is required")
-    private Long optionId;
+    private Long groupGiftOptionId;
 
 }

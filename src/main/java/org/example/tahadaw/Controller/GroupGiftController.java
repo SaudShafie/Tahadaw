@@ -5,12 +5,13 @@ import lombok.RequiredArgsConstructor;
 import org.example.tahadaw.Api.ApiResponse;
 import org.example.tahadaw.DTO.IN.GroupGiftCreateDTOIn;
 import org.example.tahadaw.DTO.IN.GroupGiftUpdateDTOIn;
-import org.example.tahadaw.DTO.IN.GroupGiftVoteDTOIn;
 import org.example.tahadaw.DTO.OUT.GroupGiftDTOOut;
 import org.example.tahadaw.Model.GroupGiftInvite;
 import org.example.tahadaw.Model.GroupGiftOption;
+import org.example.tahadaw.Model.User;
 import org.example.tahadaw.Service.GroupGiftService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,50 +24,50 @@ public class GroupGiftController {
     private final GroupGiftService groupGiftService;
 
     @PostMapping
-    public ResponseEntity<GroupGiftDTOOut> create(@RequestParam Long userId,
+    public ResponseEntity<GroupGiftDTOOut> create(@AuthenticationPrincipal User user,
                                                   @Valid @RequestBody GroupGiftCreateDTOIn request) {
-        return ResponseEntity.ok(groupGiftService.create(userId, request));
+        return ResponseEntity.ok(groupGiftService.create(user.getId(), request));
     }
 
     @GetMapping("/my")
-    public ResponseEntity<List<GroupGiftDTOOut>> listMine(@RequestParam Long userId) {
-        return ResponseEntity.ok(groupGiftService.listMine(userId));
+    public ResponseEntity<List<GroupGiftDTOOut>> listMine(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(groupGiftService.listMine(user.getId()));
     }
 
     @GetMapping("/{groupGiftId}")
-    public ResponseEntity<GroupGiftDTOOut> getOne(@RequestParam Long userId,
+    public ResponseEntity<GroupGiftDTOOut> getOne(@AuthenticationPrincipal User user,
                                                 @PathVariable Long groupGiftId) {
-        return ResponseEntity.ok(groupGiftService.getOne(userId, groupGiftId));
+        return ResponseEntity.ok(groupGiftService.getOne(user.getId(), groupGiftId));
     }
 
     @PutMapping("/{groupGiftId}")
-    public ResponseEntity<GroupGiftDTOOut> update(@RequestParam Long userId,
+    public ResponseEntity<GroupGiftDTOOut> update(@AuthenticationPrincipal User user,
                                                   @PathVariable Long groupGiftId,
                                                   @Valid @RequestBody GroupGiftUpdateDTOIn request) {
-        return ResponseEntity.ok(groupGiftService.update(userId, groupGiftId, request));
+        return ResponseEntity.ok(groupGiftService.update(user.getId(), groupGiftId, request));
     }
 
     @DeleteMapping("/{groupGiftId}")
-    public ResponseEntity<ApiResponse> delete(@RequestParam Long userId,
+    public ResponseEntity<ApiResponse> delete(@AuthenticationPrincipal User user,
                                               @PathVariable Long groupGiftId) {
-        groupGiftService.delete(userId, groupGiftId);
+        groupGiftService.delete(user.getId(), groupGiftId);
         return ResponseEntity.ok(new ApiResponse("Group gift deleted."));
     }
 
-    @PostMapping("/add-option/{groupGiftId}/{userId}")
+    @PostMapping("/add-option/{groupGiftId}")
     public ResponseEntity<?> addOption(@PathVariable Long groupGiftId,
-                                       @PathVariable Long userId,
+                                       @AuthenticationPrincipal User user,
                                        @RequestBody @Valid GroupGiftOption groupGiftOption) {
 
-        groupGiftService.addGroupGiftOption(userId, groupGiftId, groupGiftOption);
+        groupGiftService.addGroupGiftOption(user.getId(), groupGiftId, groupGiftOption);
         return ResponseEntity.status(200).body(new ApiResponse("Group gift option added successfully"));
     }
 
     @PostMapping("/ai-generate-option/{groupGiftId}")
     public ResponseEntity<?> generateAiOptions(@PathVariable Long groupGiftId,
-                                               @RequestParam Long userId) {
+                                               @AuthenticationPrincipal User user) {
 
-        groupGiftService.generateAiOptions(userId, groupGiftId);
+        groupGiftService.generateAiOptions(user.getId(), groupGiftId);
         return ResponseEntity.status(200).body(new ApiResponse("AI group gift options generated successfully"));
     }
 
@@ -77,38 +78,24 @@ public class GroupGiftController {
 
     @PostMapping("/send-invite/{groupGiftId}")
     public ResponseEntity<?> sendInvites(@PathVariable Long groupGiftId,
-                                         @RequestParam Long userId,
+                                         @AuthenticationPrincipal User user,
                                          @RequestBody List<GroupGiftInvite> invites) {
 
-        return ResponseEntity.status(200).body(groupGiftService.sendInvites(userId, groupGiftId, invites));
+        return ResponseEntity.status(200).body(groupGiftService.sendInvites(user.getId(), groupGiftId, invites));
     }
 
-    @GetMapping("/get-vote/{token}")
-    public ResponseEntity<?> getVotePageData(@PathVariable String token) {
-
-        return ResponseEntity.status(200).body(groupGiftService.getVotePageData(token));
-    }
-
-    @PostMapping("/vote/{token}")
-    public ResponseEntity<?> submitVote(@PathVariable String token,
-                                        @RequestBody @Valid GroupGiftVoteDTOIn voteDTOIn) {
-
-        groupGiftService.submitVote(token, voteDTOIn.getOptionId());
-        return ResponseEntity.status(200).body(new ApiResponse("Vote submitted successfully"));
-    }
-
-    @PutMapping("/close-voting/{groupGiftId}/{userId}")
+    @PutMapping("/close-voting/{groupGiftId}")
     public ResponseEntity<?> closeVoting(@PathVariable Long groupGiftId,
-                                         @PathVariable Long userId) {
+                                         @AuthenticationPrincipal User user) {
 
-        groupGiftService.closeVoting(userId, groupGiftId);
+        groupGiftService.closeVoting(user.getId(), groupGiftId);
         return ResponseEntity.status(200).body(new ApiResponse("Group gift voting closed successfully"));
     }
 
-    @GetMapping("/results/{groupGiftId}/{userId}")
+    @GetMapping("/results/{groupGiftId}")
     public ResponseEntity<?> getResults(@PathVariable Long groupGiftId,
-                                        @PathVariable Long userId) {
+                                        @AuthenticationPrincipal User user) {
 
-        return ResponseEntity.status(200).body(groupGiftService.getResults(userId, groupGiftId));
+        return ResponseEntity.status(200).body(groupGiftService.getResults(user.getId(), groupGiftId));
     }
 }
