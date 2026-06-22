@@ -263,7 +263,7 @@ public class GiftRecommendationService {
         if (giftPlan.getOccasionDate() != null) {
             context.append("Occasion date: ").append(giftPlan.getOccasionDate()).append('\n');
         }
-        context.append("Budget minor units: ").append(giftPlan.getBudget()).append('\n');
+        context.append("Budget in SAR: ").append(giftPlan.getBudget()).append('\n');
         context.append("Currency: ").append(giftPlan.getCurrency()).append('\n');
         if (giftPlan.getPreferredGiftStyle() != null) {
             context.append("Preferred gift style: ").append(giftPlan.getPreferredGiftStyle()).append('\n');
@@ -313,7 +313,7 @@ public class GiftRecommendationService {
                 {
                   "recommendations": [
                        {
-                         "productName": "string",
+                         "productName": "string" (should be a name for real product),
                          "category": "string",
                          "priceBand": "string (a realistic price RANGE as \"min - max CURRENCY\", e.g. \"350 - 450 SAR\")",
                          "reason": "string",
