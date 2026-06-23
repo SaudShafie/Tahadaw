@@ -92,11 +92,11 @@ Main feature areas:
 - **Maven 3.9+** (or use the included `./mvnw` wrapper)
 - **MySQL 8+** with a database named `tahadaw`
 - Optional but recommended for full functionality:
-    - OpenAI API key
-    - Moyasar (test) secret key
-    - SearchAPI.io key
-    - SMTP credentials (Gmail App Password or similar)
-    - Twilio credentials (WhatsApp)
+  - OpenAI API key
+  - Moyasar (test) secret key
+  - SearchAPI.io key
+  - SMTP credentials (Gmail App Password or similar)
+  - Twilio credentials (WhatsApp)
 
 ---
 
@@ -209,7 +209,6 @@ Interactive UI mockups for the Tahadaw platform (Arabic RTL dashboard and user f
 ![Tahadaw Entity Relationship Diagram](docs/images/tahadaw-erd.png)
 
 ---
-
 
 
 ## Bayan Saleh Contributions
