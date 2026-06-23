@@ -15,6 +15,14 @@ premium features.
 
 ---
 
+## Live API (AWS)
+
+```
+http://tahadaw-alb-278802991.eu-central-1.elb.amazonaws.com/api/v1
+```
+
+---
+
 ## Table of Contents
 
 - [Overview](#overview)

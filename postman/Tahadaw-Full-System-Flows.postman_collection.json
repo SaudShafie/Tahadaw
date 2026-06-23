@@ -2309,7 +2309,7 @@
         },
         {
           "name": "Bayan - Recipients (extra)",
-          "description": "List-my recipients via the alternate endpoint.",
+          "description": "Alternate list endpoint + delete on a throwaway recipient (keeps Ammar from flow 2 intact).",
           "item": [
             {
               "name": "Get My Recipients",
@@ -2325,6 +2325,86 @@
                     "type": "text/javascript",
                     "exec": [
                       "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Create Temp Recipient",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/recipients/add",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"مستلم مؤقت\",\n  \"relationship\": \"صديق\",\n  \"age\": 30,\n  \"gender\": \"ذكر\",\n  \"interests\": \"كتب\",\n  \"hobbies\": \"قراءة\",\n  \"favoriteColors\": \"أزرق\",\n  \"favoriteBrands\": \"سامسونج\",\n  \"dislikes\": \"—\",\n  \"personalityStyle\": \"هادئ\",\n  \"sizeInfo\": \"M\",\n  \"notes\": \"للاختبار فقط\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Capture Temp Recipient",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/recipients/get-by-user-id"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', () => pm.expect(pm.response.code).to.eql(200));",
+                      "var arr = pm.response.json();",
+                      "var pick = (arr || []).filter(function (x) { return x.name === 'مستلم مؤقت'; });",
+                      "var target = pick.length ? pick.reduce(function (a,b){return a.id>b.id?a:b;}) : null;",
+                      "if (target) { pm.collectionVariables.set('tmpRecipientId', target.id); }",
+                      "pm.test('tmpRecipientId captured', function () { pm.expect(pm.collectionVariables.get('tmpRecipientId')).to.not.be.undefined; });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete Temp Recipient",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/recipients/delete/{{tmpRecipientId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Temp recipient deleted\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Temp recipient deleted -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
                     ]
                   }
                 }
@@ -3102,6 +3182,29 @@
                   }
                 }
               ]
+            },
+            {
+              "name": "Regenerate AI Questions (user flow)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/ai-questions/regenerate/{{giftPlanId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"AI questions regenerated\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"AI questions regenerated -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
             }
           ]
         },
@@ -3667,8 +3770,31 @@
         },
         {
           "name": "Saud - Gift Card (extra, premium)",
-          "description": "Delete the gift card from flow 11. Tolerant (needs the premium-created card).",
+          "description": "Download PNG/PDF + delete the gift card from flow 11. Tolerant (needs the premium-created card).",
           "item": [
+            {
+              "name": "Download Gift Card (PNG)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-cards/{{giftCardId}}/download?format=png"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Gift card PNG downloaded\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Gift card PNG downloaded -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
             {
               "name": "Delete Gift Card",
               "request": {
@@ -3903,6 +4029,35 @@
           ]
         },
         {
+          "name": "Auth (extra)",
+          "description": "Spring Security session logout. Requires an active Basic-auth session (run after flow 1).",
+          "item": [
+            {
+              "name": "Logout",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": "{{base_url}}/api/v1/auth/logout"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"Session logged out\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"Session logged out -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
           "name": "Saud - Account Deletion (DESTRUCTIVE - run last)",
           "description": "Self-delete the signed-in account. The only delete endpoint is for the principal (no delete-by-id), so this removes the Saud account created in flow 1. Run this LAST, on its own, after everything else. Tolerant.",
           "item": [
@@ -3923,6 +4078,3779 @@
                       "pm.test(\"Current user deleted (self)\", function () {",
                       "  if (c === 200) { pm.expect(c).to.eql(200); }",
                       "  else { console.log(\"Current user deleted (self) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "API Reference — All Endpoints",
+      "description": "Complete catalog: one request per route in the codebase (104 endpoints across 20 controllers). Run the main flow folders first so {{recipientId}}, {{giftPlanId}}, etc. are populated. ADMIN routes use {{adminUsername}}/{{adminPassword}}. Tests are tolerant.",
+      "item": [
+        {
+          "name": "Users",
+          "description": "4 endpoints",
+          "item": [
+            {
+              "name": "POST /users/register",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/users/register",
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"ref_{{stamp}}\",\n  \"password\": \"Ref!2026pass\",\n  \"fullName\": \"مرجع\",\n  \"email\": \"swwdswwd124+ref{{stamp}}@gmail.com\",\n  \"phoneNumber\": \"0502427714\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /users/register\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /users/register -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /users/get (admin)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/users/get",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /users/get (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /users/get (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT /users/update",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/users/update",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"fullName\": \"سعود\",\n  \"email\": \"swwdswwd124+{{stamp}}@gmail.com\",\n  \"phoneNumber\": \"0502427714\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"PUT /users/update\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"PUT /users/update -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /users/delete",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/users/delete"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"DELETE /users/delete\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"DELETE /users/delete -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Recipients",
+          "description": "8 endpoints",
+          "item": [
+            {
+              "name": "POST /recipients/add",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/recipients/add",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"عمار\",\n  \"relationship\": \"أخ\",\n  \"age\": 25,\n  \"gender\": \"ذكر\",\n  \"interests\": \"التقنية\",\n  \"hobbies\": \"القراءة\",\n  \"favoriteColors\": \"أسود\",\n  \"favoriteBrands\": \"آبل\",\n  \"dislikes\": \"—\",\n  \"personalityStyle\": \"عملي\",\n  \"sizeInfo\": \"L\",\n  \"notes\": \"مرجع API\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /recipients/add\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /recipients/add -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /recipients/get",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/recipients/get"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /recipients/get\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /recipients/get -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /recipients/get-by-user-id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/recipients/get-by-user-id"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /recipients/get-by-user-id\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /recipients/get-by-user-id -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /recipients/get/{id}",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/recipients/get/{{recipientId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /recipients/get/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /recipients/get/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT /recipients/update/{id}",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/recipients/update/{{recipientId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"عمار\",\n  \"relationship\": \"أخ\",\n  \"age\": 25,\n  \"gender\": \"ذكر\",\n  \"interests\": \"التقنية\",\n  \"hobbies\": \"القراءة\",\n  \"favoriteColors\": \"أسود\",\n  \"favoriteBrands\": \"آبل\",\n  \"dislikes\": \"—\",\n  \"personalityStyle\": \"عملي\",\n  \"sizeInfo\": \"L\",\n  \"notes\": \"مرجع API\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"PUT /recipients/update/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"PUT /recipients/update/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /recipients/delete/{id}",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/recipients/delete/{{tmpRecipientId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"DELETE /recipients/delete/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"DELETE /recipients/delete/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /recipients/{id}/gift-history",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/recipients/{{recipientId}}/gift-history"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /recipients/{id}/gift-history\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /recipients/{id}/gift-history -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /recipients/{id}/insights",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/recipients/{{recipientId}}/insights"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /recipients/{id}/insights\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /recipients/{id}/insights -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Dashboard",
+          "description": "1 endpoint",
+          "item": [
+            {
+              "name": "GET /dashboard",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/dashboard"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /dashboard\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /dashboard -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Gift Plans",
+          "description": "13 endpoints",
+          "item": [
+            {
+              "name": "POST /gift-plans/create/{recipientId}",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/gift-plans/create/{{recipientId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"occasionType\": \"GRADUATION\",\n  \"occasionDate\": \"{{occasionDate}}\",\n  \"budget\": 500,\n  \"currency\": \"SAR\",\n  \"preferredGiftStyle\": \"PRACTICAL\",\n  \"language\": \"ar\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /gift-plans/create/{recipientId}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /gift-plans/create/{recipientId} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /gift-plans/get-my-plans",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-plans/get-my-plans"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-plans/get-my-plans\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-plans/get-my-plans -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /gift-plans/get-plan-by-id/{id}",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-plans/get-plan-by-id/{{giftPlanId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-plans/get-plan-by-id/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-plans/get-plan-by-id/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT /gift-plans/update/{id}",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/gift-plans/update/{{giftPlanId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"occasionType\": \"GRADUATION\",\n  \"occasionDate\": \"{{occasionDate}}\",\n  \"budget\": 500,\n  \"currency\": \"SAR\",\n  \"preferredGiftStyle\": \"PRACTICAL\",\n  \"language\": \"ar\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"PUT /gift-plans/update/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"PUT /gift-plans/update/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /gift-plans/delete/{id}",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-plans/delete/{{tmpGiftPlanId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"DELETE /gift-plans/delete/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"DELETE /gift-plans/delete/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /gift-plans/get-active-plans",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-plans/get-active-plans"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-plans/get-active-plans\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-plans/get-active-plans -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /gift-plans/get-previous-plans",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-plans/get-previous-plans"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-plans/get-previous-plans\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-plans/get-previous-plans -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /gift-plans/get-gift-plan-Summery/{id}",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-plans/get-gift-plan-Summery/{{giftPlanId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-plans/get-gift-plan-Summery/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-plans/get-gift-plan-Summery/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /gift-plans/{id}/surprise-plan/generate",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/gift-plans/{{giftPlanId}}/surprise-plan/generate",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"language\": \"ar\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /gift-plans/{id}/surprise-plan/generate\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /gift-plans/{id}/surprise-plan/generate -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /gift-plans/{id}/surprise-plan/regenerate",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/gift-plans/{{giftPlanId}}/surprise-plan/regenerate",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"language\": \"ar\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /gift-plans/{id}/surprise-plan/regenerate\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /gift-plans/{id}/surprise-plan/regenerate -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT /gift-plans/{id}/surprise-plan",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/gift-plans/{{giftPlanId}}/surprise-plan",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"planTitle\": \"خطة\",\n  \"steps\": \"خطوات\",\n  \"timingSuggestion\": \"بعد الحفل\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"PUT /gift-plans/{id}/surprise-plan\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"PUT /gift-plans/{id}/surprise-plan -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /gift-plans/{id}/surprise-plan",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-plans/{{giftPlanId}}/surprise-plan"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-plans/{id}/surprise-plan\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-plans/{id}/surprise-plan -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /gift-plans/{id}/surprise-plan",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-plans/{{giftPlanId}}/surprise-plan"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"DELETE /gift-plans/{id}/surprise-plan\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"DELETE /gift-plans/{id}/surprise-plan -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Required Questions",
+          "description": "6 endpoints",
+          "item": [
+            {
+              "name": "POST /required-questions/add (admin)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/required-questions/add",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"questionText\": \"سؤال مرجعي\",\n  \"questionType\": \"TEXT\",\n  \"isActive\": true,\n  \"displayOrder\": 1\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /required-questions/add (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /required-questions/add (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /required-questions/get (admin)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/required-questions/get",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /required-questions/get (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /required-questions/get (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT /required-questions/update/{id} (admin)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/required-questions/update/{{tmpQuestionId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"questionText\": \"سؤال محدّث\",\n  \"questionType\": \"TEXT\",\n  \"isActive\": true,\n  \"displayOrder\": 1\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"PUT /required-questions/update/{id} (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"PUT /required-questions/update/{id} (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /required-questions/delete/{id} (admin)",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/required-questions/delete/{{tmpQuestionId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"DELETE /required-questions/delete/{id} (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"DELETE /required-questions/delete/{id} (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT /required-questions/disable/{id} (admin)",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": "{{base_url}}/api/v1/required-questions/disable/{{tmpQuestionId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"PUT /required-questions/disable/{id} (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"PUT /required-questions/disable/{id} (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /required-questions/gift-plans/{id}",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/required-questions/gift-plans/{{giftPlanId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /required-questions/gift-plans/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /required-questions/gift-plans/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Required Question Answers",
+          "description": "7 endpoints",
+          "item": [
+            {
+              "name": "POST /required-question-answers/required-question/{id} (admin)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/required-question-answers/required-question/{{anyQuestionId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"answerText\": \"إجابة\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /required-question-answers/required-question/{id} (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /required-question-answers/required-question/{id} (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /required-question-answers/get (admin)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/required-question-answers/get",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /required-question-answers/get (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /required-question-answers/get (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /required-question-answers/get-by-id/{id} (admin)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/required-question-answers/get-by-id/{{tmpRqAnswerId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /required-question-answers/get-by-id/{id} (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /required-question-answers/get-by-id/{id} (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT /required-question-answers/update/{id} (admin)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/required-question-answers/update/{{tmpRqAnswerId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"answerText\": \"إجابة محدّثة\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"PUT /required-question-answers/update/{id} (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"PUT /required-question-answers/update/{id} (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /required-question-answers/delete/{id} (admin)",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/required-question-answers/delete/{{tmpRqAnswerId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"DELETE /required-question-answers/delete/{id} (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"DELETE /required-question-answers/delete/{id} (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /required-question-answers/gift-plans/{id}/submit",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/required-question-answers/gift-plans/{{giftPlanId}}/submit",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{{requiredAnswersBody}}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /required-question-answers/gift-plans/{id}/submit\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /required-question-answers/gift-plans/{id}/submit -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /required-question-answers/gift-plans/{id}",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/required-question-answers/gift-plans/{{giftPlanId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /required-question-answers/gift-plans/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /required-question-answers/gift-plans/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "AI Questions",
+          "description": "8 endpoints",
+          "item": [
+            {
+              "name": "POST /ai-questions/create/{giftPlanId} (admin)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/ai-questions/create/{{giftPlanId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"questionText\": \"سؤال AI\",\n  \"reasonForQuestion\": \"سبب\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /ai-questions/create/{giftPlanId} (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /ai-questions/create/{giftPlanId} (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /ai-questions/get (admin)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/ai-questions/get",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /ai-questions/get (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /ai-questions/get (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /ai-questions/get-by-id/{id} (admin)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/ai-questions/get-by-id/{{tmpAiQuestionId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /ai-questions/get-by-id/{id} (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /ai-questions/get-by-id/{id} (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT /ai-questions/update/{id} (admin)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/ai-questions/update/{{tmpAiQuestionId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"questionText\": \"سؤال محدّث\",\n  \"reasonForQuestion\": \"سبب\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"PUT /ai-questions/update/{id} (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"PUT /ai-questions/update/{id} (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /ai-questions/delete/{id} (admin)",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/ai-questions/delete/{{tmpAiQuestionId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"DELETE /ai-questions/delete/{id} (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"DELETE /ai-questions/delete/{id} (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /ai-questions/generate/{giftPlanId}",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/ai-questions/generate/{{giftPlanId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /ai-questions/generate/{giftPlanId}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /ai-questions/generate/{giftPlanId} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /ai-questions/gift-plans/{giftPlanId}",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/ai-questions/gift-plans/{{giftPlanId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /ai-questions/gift-plans/{giftPlanId}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /ai-questions/gift-plans/{giftPlanId} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /ai-questions/regenerate/{giftPlanId}",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/ai-questions/regenerate/{{giftPlanId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /ai-questions/regenerate/{giftPlanId}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /ai-questions/regenerate/{giftPlanId} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "AI Answers",
+          "description": "7 endpoints",
+          "item": [
+            {
+              "name": "POST /ai-answers/ai-question/{id} (admin)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/ai-answers/ai-question/{{tmpAiQuestionId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"answerText\": \"إجابة\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /ai-answers/ai-question/{id} (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /ai-answers/ai-question/{id} (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /ai-answers/get (admin)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/ai-answers/get",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /ai-answers/get (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /ai-answers/get (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /ai-answers/get-by-id/{id} (admin)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/ai-answers/get-by-id/{{tmpAiAnswerId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /ai-answers/get-by-id/{id} (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /ai-answers/get-by-id/{id} (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT /ai-answers/update/{id} (admin)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/ai-answers/update/{{tmpAiAnswerId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"answerText\": \"إجابة محدّثة\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"PUT /ai-answers/update/{id} (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"PUT /ai-answers/update/{id} (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /ai-answers/delete/{id} (admin)",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/ai-answers/delete/{{tmpAiAnswerId}}",
+                "auth": {
+                  "type": "basic",
+                  "basic": [
+                    {
+                      "key": "username",
+                      "value": "{{adminUsername}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{adminPassword}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"DELETE /ai-answers/delete/{id} (admin)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"DELETE /ai-answers/delete/{id} (admin) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /ai-answers/gift-plans/{giftPlanId}",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/ai-answers/gift-plans/{{giftPlanId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{{aiAnswersBody}}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /ai-answers/gift-plans/{giftPlanId}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /ai-answers/gift-plans/{giftPlanId} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /ai-answers/gift-plans/{giftPlanId}",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/ai-answers/gift-plans/{{giftPlanId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /ai-answers/gift-plans/{giftPlanId}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /ai-answers/gift-plans/{giftPlanId} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Gift Recommendations",
+          "description": "5 endpoints",
+          "item": [
+            {
+              "name": "GET /gift-recommendations/gift-plans/{id}",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-recommendations/gift-plans/{{giftPlanId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-recommendations/gift-plans/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-recommendations/gift-plans/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /gift-recommendations/gift-plans/{id}/regenerate",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-recommendations/gift-plans/{{giftPlanId}}/regenerate"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-recommendations/gift-plans/{id}/regenerate\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-recommendations/gift-plans/{id}/regenerate -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /gift-recommendations/gift-plans/{id}/selected",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-recommendations/gift-plans/{{giftPlanId}}/selected"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-recommendations/gift-plans/{id}/selected\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-recommendations/gift-plans/{id}/selected -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT /gift-recommendations/{id}/select",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-recommendations/{{recommendationId}}/select"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"PUT /gift-recommendations/{id}/select\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"PUT /gift-recommendations/{id}/select -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT /gift-recommendations/{id}/unselect",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-recommendations/{{recommendationId}}/unselect"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"PUT /gift-recommendations/{id}/unselect\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"PUT /gift-recommendations/{id}/unselect -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Product Search & Selection",
+          "description": "4 endpoints",
+          "item": [
+            {
+              "name": "GET /search/gift-plans/{id}/products",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/search/gift-plans/{{giftPlanId}}/products"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /search/gift-plans/{id}/products\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /search/gift-plans/{id}/products -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /selected-products/select-product/{id}",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": "{{base_url}}/api/v1/selected-products/select-product/{{productId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /selected-products/select-product/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /selected-products/select-product/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /selected-products/get-selected-product/{giftPlanId}",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/selected-products/get-selected-product/{{giftPlanId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /selected-products/get-selected-product/{giftPlanId}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /selected-products/get-selected-product/{giftPlanId} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /selected-products/clear-selected-product/{giftPlanId}",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/selected-products/clear-selected-product/{{giftPlanId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"DELETE /selected-products/clear-selected-product/{giftPlanId}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"DELETE /selected-products/clear-selected-product/{giftPlanId} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Gift Messages",
+          "description": "6 endpoints",
+          "item": [
+            {
+              "name": "POST /gift-messages/generate",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/gift-messages/generate",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"recipientName\": \"عمار\",\n  \"relationship\": \"أخ\",\n  \"occasion\": \"تخرّج\",\n  \"giftName\": \"ساعة\",\n  \"tone\": \"دافئ\",\n  \"language\": \"ar\",\n  \"dialect\": \"سعودي\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /gift-messages/generate\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /gift-messages/generate -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /gift-messages/generate-from-plan/{id}",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/gift-messages/generate-from-plan/{{giftPlanId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"tone\": \"دافئ\",\n  \"language\": \"ar\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /gift-messages/generate-from-plan/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /gift-messages/generate-from-plan/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /gift-messages/manual",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/gift-messages/manual",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"messageText\": \"مبروك يا عمار!\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /gift-messages/manual\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /gift-messages/manual -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /gift-messages/my",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-messages/my"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-messages/my\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-messages/my -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /gift-messages/{id}",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-messages/{{giftMessageId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-messages/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-messages/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT /gift-messages/{id}",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/gift-messages/{{giftMessageId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"messageText\": \"رسالة محدّثة\",\n  \"tone\": \"دافئ\",\n  \"language\": \"ar\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"PUT /gift-messages/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"PUT /gift-messages/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Gift Cards",
+          "description": "10 endpoints",
+          "item": [
+            {
+              "name": "POST /gift-cards",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/gift-cards",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"giftMessageId\": \"{{giftMessageId}}\",\n  \"recipientName\": \"عمار\",\n  \"senderName\": \"سعود\",\n  \"cardSize\": \"MEDIUM\",\n  \"linkType\": \"VIDEO\",\n  \"linkUrl\": \"https://example.com\",\n  \"sentToEmail\": \"swwdswwd124@gmail.com\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /gift-cards\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /gift-cards -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /gift-cards/my",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-cards/my"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-cards/my\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-cards/my -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /gift-cards/{id}",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-cards/{{giftCardId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-cards/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-cards/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT /gift-cards/{id}",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/gift-cards/{{giftCardId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"cardSize\": \"LARGE\",\n  \"recipientName\": \"عمار\",\n  \"senderName\": \"سعود\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"PUT /gift-cards/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"PUT /gift-cards/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /gift-cards/{id}/regenerate",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-cards/{{giftCardId}}/regenerate"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /gift-cards/{id}/regenerate\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /gift-cards/{id}/regenerate -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /gift-cards/{id}/image",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-cards/{{giftCardId}}/image"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-cards/{id}/image\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-cards/{id}/image -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /gift-cards/{id}/download?format=pdf",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-cards/{{giftCardId}}/download?format=pdf"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-cards/{id}/download?format=pdf\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-cards/{id}/download?format=pdf -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /gift-cards/{id}/download?format=png",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-cards/{{giftCardId}}/download?format=png"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-cards/{id}/download?format=png\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-cards/{id}/download?format=png -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /gift-cards/{id}/send-email",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/gift-cards/{{giftCardId}}/send-email",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"swwdswwd124@gmail.com\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /gift-cards/{id}/send-email\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /gift-cards/{id}/send-email -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /gift-cards/{id}",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-cards/{{giftCardId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"DELETE /gift-cards/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"DELETE /gift-cards/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Gift History",
+          "description": "7 endpoints",
+          "item": [
+            {
+              "name": "POST /gift-history/from-product/{id}",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/gift-history/from-product/{{selectedProductId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"wasGifted\": true,\n  \"userRating\": 5,\n  \"notes\": \"ممتاز\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /gift-history/from-product/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /gift-history/from-product/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT /gift-history/from-product/{id}",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/gift-history/from-product/{{selectedProductId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"wasGifted\": true,\n  \"userRating\": 4,\n  \"notes\": \"جيد\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"PUT /gift-history/from-product/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"PUT /gift-history/from-product/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /gift-history/from-product/{id}",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-history/from-product/{{selectedProductId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-history/from-product/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-history/from-product/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /gift-history/from-product/{id}",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-history/from-product/{{selectedProductId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"DELETE /gift-history/from-product/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"DELETE /gift-history/from-product/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /gift-history/my",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-history/my"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-history/my\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-history/my -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /gift-history/summary",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-history/summary"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-history/summary\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-history/summary -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /gift-history/spending-stats",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-history/spending-stats?from=2026-01-01&to=2026-12-31"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-history/spending-stats\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-history/spending-stats -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Gift Quality Checks",
+          "description": "3 endpoints",
+          "item": [
+            {
+              "name": "POST /gift-quality-checks/add/{recipientId}",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/gift-quality-checks/add/{{recipientId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"giftName\": \"ساعة\",\n  \"giftDescription\": \"ساعة ذكية\",\n  \"price\": 499,\n  \"occasionType\": \"GRADUATION\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /gift-quality-checks/add/{recipientId}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /gift-quality-checks/add/{recipientId} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /gift-quality-checks/recipients/{recipientId}",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-quality-checks/recipients/{{recipientId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-quality-checks/recipients/{recipientId}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-quality-checks/recipients/{recipientId} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /gift-quality-checks/{checkId}",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/gift-quality-checks/{{qualityCheckId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /gift-quality-checks/{checkId}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /gift-quality-checks/{checkId} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Reminders",
+          "description": "5 endpoints",
+          "item": [
+            {
+              "name": "POST /reminders/add/{recipientId}",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/reminders/add/{{recipientId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reminderDate\": \"{{reminderDate}}\",\n  \"message\": \"تذكير\",\n  \"status\": \"PENDING\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /reminders/add/{recipientId}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /reminders/add/{recipientId} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /reminders/get",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/reminders/get"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /reminders/get\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /reminders/get -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /reminders/get-my",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/reminders/get-my"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /reminders/get-my\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /reminders/get-my -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT /reminders/update/{id}",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/reminders/update/{{reminderId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reminderDate\": \"{{reminderDate}}\",\n  \"message\": \"تذكير محدّث\",\n  \"status\": \"PENDING\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"PUT /reminders/update/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"PUT /reminders/update/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /reminders/delete/{id}",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/reminders/delete/{{reminderId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"DELETE /reminders/delete/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"DELETE /reminders/delete/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Notifications",
+          "description": "5 endpoints",
+          "item": [
+            {
+              "name": "POST /notifications",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/notifications",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"إشعار\",\n  \"message\": \"رسالة\",\n  \"type\": \"RECOMMENDATIONS_READY\",\n  \"status\": \"UNREAD\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /notifications\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /notifications -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /notifications/my",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/notifications/my"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /notifications/my\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /notifications/my -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /notifications/{id}",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/notifications/{{notificationId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /notifications/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /notifications/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT /notifications/{id}",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/notifications/{{notificationId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"READ\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"PUT /notifications/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"PUT /notifications/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /notifications/{id}",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/notifications/{{notificationId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"DELETE /notifications/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"DELETE /notifications/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Group Gifts",
+          "description": "11 endpoints",
+          "item": [
+            {
+              "name": "POST /group-gifts",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/group-gifts",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"recipientId\": \"{{recipientId}}\",\n  \"title\": \"هدية جماعية\",\n  \"description\": \"وصف\",\n  \"responsiblePersonName\": \"سعود\",\n  \"responsiblePersonEmail\": \"swwdswwd124@gmail.com\",\n  \"giftGivingDate\": \"{{giftGivingDate}}\",\n  \"votingDeadline\": \"{{votingDeadline}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /group-gifts\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /group-gifts -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /group-gifts/my",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/group-gifts/my"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /group-gifts/my\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /group-gifts/my -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /group-gifts/{id}",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/group-gifts/{{groupGiftId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /group-gifts/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /group-gifts/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT /group-gifts/{id}",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/group-gifts/{{groupGiftId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"هدية محدّثة\",\n  \"description\": \"وصف\",\n  \"responsiblePersonName\": \"سعود\",\n  \"responsiblePersonEmail\": \"swwdswwd124@gmail.com\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"PUT /group-gifts/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"PUT /group-gifts/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /group-gifts/{id}",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/api/v1/group-gifts/{{groupGiftId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"DELETE /group-gifts/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"DELETE /group-gifts/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /group-gifts/add-option/{id}",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/group-gifts/add-option/{{groupGiftId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"giftName\": \"ساعة\",\n  \"description\": \"وصف\",\n  \"priceBand\": \"500 SAR\",\n  \"reason\": \"مناسبة\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /group-gifts/add-option/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /group-gifts/add-option/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /group-gifts/ai-generate-option/{id}",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": "{{base_url}}/api/v1/group-gifts/ai-generate-option/{{groupGiftId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /group-gifts/ai-generate-option/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /group-gifts/ai-generate-option/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /group-gifts/get-options/{id}",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/group-gifts/get-options/{{groupGiftId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /group-gifts/get-options/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /group-gifts/get-options/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /group-gifts/send-invite/{id}",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/group-gifts/send-invite/{{groupGiftId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "[\n  {\n    \"inviteeName\": \"ضيف\",\n    \"inviteeEmail\": \"swwdswwd124@gmail.com\"\n  }\n]",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /group-gifts/send-invite/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /group-gifts/send-invite/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT /group-gifts/close-voting/{id}",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": "{{base_url}}/api/v1/group-gifts/close-voting/{{groupGiftId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"PUT /group-gifts/close-voting/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"PUT /group-gifts/close-voting/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /group-gifts/results/{id}",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/group-gifts/results/{{groupGiftId}}"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /group-gifts/results/{id}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /group-gifts/results/{id} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Public Group Gifts",
+          "description": "2 endpoints (no auth)",
+          "item": [
+            {
+              "name": "GET /public/group-gifts/vote/{token}",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/public/group-gifts/vote/{{inviteToken}}",
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /public/group-gifts/vote/{token}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /public/group-gifts/vote/{token} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /public/group-gifts/vote/{token}",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/public/group-gifts/vote/{{inviteToken}}",
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"groupGiftOptionId\": \"{{groupGiftOptionId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /public/group-gifts/vote/{token}\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /public/group-gifts/vote/{token} -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Payments & Premium",
+          "description": "5 endpoints",
+          "item": [
+            {
+              "name": "POST /payments/premium",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/payments/premium",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Saud\",\n  \"number\": \"4111111111111111\",\n  \"cvc\": \"123\",\n  \"month\": \"12\",\n  \"year\": \"30\",\n  \"callbackUrl\": \"https://example.com/callback\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /payments/premium\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /payments/premium -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /payments/my",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/payments/my"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /payments/my\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /payments/my -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /premium/status",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/premium/status"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /premium/status\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /premium/status -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /payments/webhook/moyasar (public)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/payments/webhook/moyasar",
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"id\": \"{{moyasarId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /payments/webhook/moyasar (public)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /payments/webhook/moyasar (public) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /payments/moyasar-status/{id} (public)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/api/v1/payments/moyasar-status/{{moyasarId}}",
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"GET /payments/moyasar-status/{id} (public)\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"GET /payments/moyasar-status/{id} (public) -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "QR Code",
+          "description": "1 endpoint",
+          "item": [
+            {
+              "name": "POST /qr-code/generate",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/api/v1/qr-code/generate",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"url\": \"https://example.com\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /qr-code/generate\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /qr-code/generate -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Auth",
+          "description": "1 endpoint",
+          "item": [
+            {
+              "name": "POST /auth/logout",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": "{{base_url}}/api/v1/auth/logout"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "var c = pm.response.code;",
+                      "pm.test(\"POST /auth/logout\", function () {",
+                      "  if (c === 200) { pm.expect(c).to.eql(200); }",
+                      "  else { console.log(\"POST /auth/logout -> HTTP \" + c + ': ' + pm.response.text().slice(0,300)); pm.expect(true).to.be.true; }",
                       "});"
                     ]
                   }
@@ -4081,6 +8009,10 @@
     },
     {
       "key": "tmpGiftPlanId",
+      "value": ""
+    },
+    {
+      "key": "tmpRecipientId",
       "value": ""
     }
   ]
