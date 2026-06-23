@@ -79,6 +79,7 @@ Main feature areas:
 | Boilerplate | Lombok |
 | Build | Maven (`mvnw` wrapper) |
 | Containerization | Docker |
+| Deployment / Cloud | AWS |
 | Testing | Spring Boot Test, Spring Security Test, JPA Test |
 
 ---
