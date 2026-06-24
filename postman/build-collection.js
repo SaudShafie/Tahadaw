@@ -477,9 +477,26 @@ extraSubs.push(folder('Bayan - Users (extra, admin)',
   ]
 ));
 
-extraSubs.push(folder('Bayan - Recipients (extra)', 'List-my recipients via the alternate endpoint.', [
-  req('Get My Recipients', 'GET', B + '/api/v1/recipients/get', {})
-]));
+extraSubs.push(folder('Bayan - Recipients (extra)',
+  'Alternate list endpoint + delete on a throwaway recipient (keeps Ammar from flow 2 intact).',
+  [
+    req('Get My Recipients', 'GET', B + '/api/v1/recipients/get', {}),
+    req('Create Temp Recipient', 'POST', B + '/api/v1/recipients/add', {
+      body: { name: 'مستلم مؤقت', relationship: 'صديق', age: 30, gender: 'ذكر', interests: 'كتب', hobbies: 'قراءة', favoriteColors: 'أزرق', favoriteBrands: 'سامسونج', dislikes: '—', personalityStyle: 'هادئ', sizeInfo: 'M', notes: 'للاختبار فقط' }
+    }),
+    req('Capture Temp Recipient', 'GET', B + '/api/v1/recipients/get-by-user-id', {
+      test: [
+        ASSERT_200,
+        "var arr = pm.response.json();",
+        "var pick = (arr || []).filter(function (x) { return x.name === 'مستلم مؤقت'; });",
+        "var target = pick.length ? pick.reduce(function (a,b){return a.id>b.id?a:b;}) : null;",
+        "if (target) { pm.collectionVariables.set('tmpRecipientId', target.id); }",
+        "pm.test('tmpRecipientId captured', function () { pm.expect(pm.collectionVariables.get('tmpRecipientId')).to.not.be.undefined; });"
+      ]
+    }),
+    req('Delete Temp Recipient', 'DELETE', B + '/api/v1/recipients/delete/{{tmpRecipientId}}', { test: tolerant('Temp recipient deleted') })
+  ]
+));
 
 extraSubs.push(folder('Bayan - Admin Required Questions (extra, admin)',
   'Full ADMIN CRUD for required questions on a throwaway question. Uses Basic {{adminUsername}}/{{adminPassword}} (tolerant).',
@@ -539,7 +556,8 @@ extraSubs.push(folder('Shahad - AI Questions (extra CRUD, admin)',
     req('Create AI Question', 'POST', B + '/api/v1/ai-questions/create/' + G, { auth: 'admin', body: { questionText: 'هل يفضّل عمار الهدايا التقنية أم الكلاسيكية؟', reasonForQuestion: 'لتحديد اتجاه الهدية المناسب.' }, test: tolerant('AI question created (admin)') }),
     req('Get All AI Questions & Capture', 'GET', B + '/api/v1/ai-questions/get', { auth: 'admin', test: captureMaxId('tmpAiQuestionId', 'tmpAiQuestionId') }),
     req('Get AI Question By Id', 'GET', B + '/api/v1/ai-questions/get-by-id/{{tmpAiQuestionId}}', { auth: 'admin', test: tolerant('AI question fetched (admin)') }),
-    req('Update AI Question', 'PUT', B + '/api/v1/ai-questions/update/{{tmpAiQuestionId}}', { auth: 'admin', body: { questionText: 'هل يفضّل عمار الهدايا التقنية الحديثة؟', reasonForQuestion: 'تحديث سبب السؤال.' }, test: tolerant('AI question updated (admin)') })
+    req('Update AI Question', 'PUT', B + '/api/v1/ai-questions/update/{{tmpAiQuestionId}}', { auth: 'admin', body: { questionText: 'هل يفضّل عمار الهدايا التقنية الحديثة؟', reasonForQuestion: 'تحديث سبب السؤال.' }, test: tolerant('AI question updated (admin)') }),
+    req('Regenerate AI Questions (user flow)', 'GET', B + '/api/v1/ai-questions/regenerate/' + G, { test: tolerant('AI questions regenerated') })
   ]
 ));
 
@@ -590,8 +608,9 @@ extraSubs.push(folder('Saud - Surprise Plan (extra, premium)',
 ));
 
 extraSubs.push(folder('Saud - Gift Card (extra, premium)',
-  'Delete the gift card from flow 11. Tolerant (needs the premium-created card).',
+  'Download PNG/PDF + delete the gift card from flow 11. Tolerant (needs the premium-created card).',
   [
+    req('Download Gift Card (PNG)', 'GET', B + '/api/v1/gift-cards/{{giftCardId}}/download?format=png', { test: tolerant('Gift card PNG downloaded') }),
     req('Delete Gift Card', 'DELETE', B + '/api/v1/gift-cards/{{giftCardId}}', { test: tolerant('Gift card deleted') })
   ]
 ));
@@ -637,6 +656,13 @@ extraSubs.push(folder('Saud - QR Code (utility)',
   ]
 ));
 
+extraSubs.push(folder('Auth (extra)',
+  'Spring Security session logout. Requires an active Basic-auth session (run after flow 1).',
+  [
+    req('Logout', 'POST', B + '/api/v1/auth/logout', { test: tolerant('Session logged out') })
+  ]
+));
+
 extraSubs.push(folder('Saud - Account Deletion (DESTRUCTIVE - run last)',
   'Self-delete the signed-in account. The only delete endpoint is for the principal (no delete-by-id), so this removes the Saud account created in flow 1. Run this LAST, on its own, after everything else. Tolerant.',
   [
@@ -648,6 +674,191 @@ folders.push(folder(
   'Extra - Out-of-Flow Endpoints',
   'Endpoints not part of a main user journey: alternate listings, ADMIN management, utilities, the public webhook, and destructive deletes. Grouped per developer/resource. Run the flow folders first so captured IDs are available. ADMIN folders need {{adminUsername}}/{{adminPassword}} set to a real ADMIN account. The final "Account Deletion" folder is destructive — run it last.',
   extraSubs
+));
+
+// ============================ COMPLETE API REFERENCE ============================
+// One request per route in the codebase — use after main flows to verify nothing was missed.
+function apiRef(name, method, path, opts) {
+  opts = opts || {};
+  if (!opts.test) opts.test = tolerant(name);
+  return req(name, method, B + path, opts);
+}
+
+const recipientBody = {
+  name: 'عمار', relationship: 'أخ', age: 25, gender: 'ذكر',
+  interests: 'التقنية', hobbies: 'القراءة', favoriteColors: 'أسود',
+  favoriteBrands: 'آبل', dislikes: '—', personalityStyle: 'عملي', sizeInfo: 'L', notes: 'مرجع API'
+};
+const planBody = { occasionType: 'GRADUATION', occasionDate: '{{occasionDate}}', budget: 500, currency: 'SAR', preferredGiftStyle: 'PRACTICAL', language: 'ar' };
+
+const apiRefSubs = [
+  folder('Users', '4 endpoints', [
+    apiRef('POST /users/register', 'POST', '/api/v1/users/register', { auth: 'none', body: { username: 'ref_{{stamp}}', password: 'Ref!2026pass', fullName: 'مرجع', email: 'swwdswwd124+ref{{stamp}}@gmail.com', phoneNumber: '0502427714' } }),
+    apiRef('GET /users/get (admin)', 'GET', '/api/v1/users/get', { auth: 'admin' }),
+    apiRef('PUT /users/update', 'PUT', '/api/v1/users/update', { body: { username: '{{username}}', password: '{{password}}', fullName: 'سعود', email: 'swwdswwd124+{{stamp}}@gmail.com', phoneNumber: '0502427714' } }),
+    apiRef('DELETE /users/delete', 'DELETE', '/api/v1/users/delete')
+  ]),
+  folder('Recipients', '8 endpoints', [
+    apiRef('POST /recipients/add', 'POST', '/api/v1/recipients/add', { body: recipientBody }),
+    apiRef('GET /recipients/get', 'GET', '/api/v1/recipients/get'),
+    apiRef('GET /recipients/get-by-user-id', 'GET', '/api/v1/recipients/get-by-user-id'),
+    apiRef('GET /recipients/get/{id}', 'GET', '/api/v1/recipients/get/' + R),
+    apiRef('PUT /recipients/update/{id}', 'PUT', '/api/v1/recipients/update/' + R, { body: recipientBody }),
+    apiRef('DELETE /recipients/delete/{id}', 'DELETE', '/api/v1/recipients/delete/{{tmpRecipientId}}'),
+    apiRef('GET /recipients/{id}/gift-history', 'GET', '/api/v1/recipients/' + R + '/gift-history'),
+    apiRef('GET /recipients/{id}/insights', 'GET', '/api/v1/recipients/' + R + '/insights')
+  ]),
+  folder('Dashboard', '1 endpoint', [
+    apiRef('GET /dashboard', 'GET', '/api/v1/dashboard')
+  ]),
+  folder('Gift Plans', '13 endpoints', [
+    apiRef('POST /gift-plans/create/{recipientId}', 'POST', '/api/v1/gift-plans/create/' + R, { body: planBody }),
+    apiRef('GET /gift-plans/get-my-plans', 'GET', '/api/v1/gift-plans/get-my-plans'),
+    apiRef('GET /gift-plans/get-plan-by-id/{id}', 'GET', '/api/v1/gift-plans/get-plan-by-id/' + G),
+    apiRef('PUT /gift-plans/update/{id}', 'PUT', '/api/v1/gift-plans/update/' + G, { body: planBody }),
+    apiRef('DELETE /gift-plans/delete/{id}', 'DELETE', '/api/v1/gift-plans/delete/{{tmpGiftPlanId}}'),
+    apiRef('GET /gift-plans/get-active-plans', 'GET', '/api/v1/gift-plans/get-active-plans'),
+    apiRef('GET /gift-plans/get-previous-plans', 'GET', '/api/v1/gift-plans/get-previous-plans'),
+    apiRef('GET /gift-plans/get-gift-plan-Summery/{id}', 'GET', '/api/v1/gift-plans/get-gift-plan-Summery/' + G),
+    apiRef('POST /gift-plans/{id}/surprise-plan/generate', 'POST', '/api/v1/gift-plans/' + G + '/surprise-plan/generate', { body: { language: 'ar' } }),
+    apiRef('POST /gift-plans/{id}/surprise-plan/regenerate', 'POST', '/api/v1/gift-plans/' + G + '/surprise-plan/regenerate', { body: { language: 'ar' } }),
+    apiRef('PUT /gift-plans/{id}/surprise-plan', 'PUT', '/api/v1/gift-plans/' + G + '/surprise-plan', { body: { planTitle: 'خطة', steps: 'خطوات', timingSuggestion: 'بعد الحفل' } }),
+    apiRef('GET /gift-plans/{id}/surprise-plan', 'GET', '/api/v1/gift-plans/' + G + '/surprise-plan'),
+    apiRef('DELETE /gift-plans/{id}/surprise-plan', 'DELETE', '/api/v1/gift-plans/' + G + '/surprise-plan')
+  ]),
+  folder('Required Questions', '6 endpoints', [
+    apiRef('POST /required-questions/add (admin)', 'POST', '/api/v1/required-questions/add', { auth: 'admin', body: { questionText: 'سؤال مرجعي', questionType: 'TEXT', isActive: true, displayOrder: 1 } }),
+    apiRef('GET /required-questions/get (admin)', 'GET', '/api/v1/required-questions/get', { auth: 'admin' }),
+    apiRef('PUT /required-questions/update/{id} (admin)', 'PUT', '/api/v1/required-questions/update/{{tmpQuestionId}}', { auth: 'admin', body: { questionText: 'سؤال محدّث', questionType: 'TEXT', isActive: true, displayOrder: 1 } }),
+    apiRef('DELETE /required-questions/delete/{id} (admin)', 'DELETE', '/api/v1/required-questions/delete/{{tmpQuestionId}}', { auth: 'admin' }),
+    apiRef('PUT /required-questions/disable/{id} (admin)', 'PUT', '/api/v1/required-questions/disable/{{tmpQuestionId}}', { auth: 'admin' }),
+    apiRef('GET /required-questions/gift-plans/{id}', 'GET', '/api/v1/required-questions/gift-plans/' + G)
+  ]),
+  folder('Required Question Answers', '7 endpoints', [
+    apiRef('POST /required-question-answers/required-question/{id} (admin)', 'POST', '/api/v1/required-question-answers/required-question/{{anyQuestionId}}', { auth: 'admin', body: { answerText: 'إجابة' } }),
+    apiRef('GET /required-question-answers/get (admin)', 'GET', '/api/v1/required-question-answers/get', { auth: 'admin' }),
+    apiRef('GET /required-question-answers/get-by-id/{id} (admin)', 'GET', '/api/v1/required-question-answers/get-by-id/{{tmpRqAnswerId}}', { auth: 'admin' }),
+    apiRef('PUT /required-question-answers/update/{id} (admin)', 'PUT', '/api/v1/required-question-answers/update/{{tmpRqAnswerId}}', { auth: 'admin', body: { answerText: 'إجابة محدّثة' } }),
+    apiRef('DELETE /required-question-answers/delete/{id} (admin)', 'DELETE', '/api/v1/required-question-answers/delete/{{tmpRqAnswerId}}', { auth: 'admin' }),
+    apiRef('POST /required-question-answers/gift-plans/{id}/submit', 'POST', '/api/v1/required-question-answers/gift-plans/' + G + '/submit', { body: '{{requiredAnswersBody}}' }),
+    apiRef('GET /required-question-answers/gift-plans/{id}', 'GET', '/api/v1/required-question-answers/gift-plans/' + G)
+  ]),
+  folder('AI Questions', '8 endpoints', [
+    apiRef('POST /ai-questions/create/{giftPlanId} (admin)', 'POST', '/api/v1/ai-questions/create/' + G, { auth: 'admin', body: { questionText: 'سؤال AI', reasonForQuestion: 'سبب' } }),
+    apiRef('GET /ai-questions/get (admin)', 'GET', '/api/v1/ai-questions/get', { auth: 'admin' }),
+    apiRef('GET /ai-questions/get-by-id/{id} (admin)', 'GET', '/api/v1/ai-questions/get-by-id/{{tmpAiQuestionId}}', { auth: 'admin' }),
+    apiRef('PUT /ai-questions/update/{id} (admin)', 'PUT', '/api/v1/ai-questions/update/{{tmpAiQuestionId}}', { auth: 'admin', body: { questionText: 'سؤال محدّث', reasonForQuestion: 'سبب' } }),
+    apiRef('DELETE /ai-questions/delete/{id} (admin)', 'DELETE', '/api/v1/ai-questions/delete/{{tmpAiQuestionId}}', { auth: 'admin' }),
+    apiRef('GET /ai-questions/generate/{giftPlanId}', 'GET', '/api/v1/ai-questions/generate/' + G),
+    apiRef('GET /ai-questions/gift-plans/{giftPlanId}', 'GET', '/api/v1/ai-questions/gift-plans/' + G),
+    apiRef('GET /ai-questions/regenerate/{giftPlanId}', 'GET', '/api/v1/ai-questions/regenerate/' + G)
+  ]),
+  folder('AI Answers', '7 endpoints', [
+    apiRef('POST /ai-answers/ai-question/{id} (admin)', 'POST', '/api/v1/ai-answers/ai-question/{{tmpAiQuestionId}}', { auth: 'admin', body: { answerText: 'إجابة' } }),
+    apiRef('GET /ai-answers/get (admin)', 'GET', '/api/v1/ai-answers/get', { auth: 'admin' }),
+    apiRef('GET /ai-answers/get-by-id/{id} (admin)', 'GET', '/api/v1/ai-answers/get-by-id/{{tmpAiAnswerId}}', { auth: 'admin' }),
+    apiRef('PUT /ai-answers/update/{id} (admin)', 'PUT', '/api/v1/ai-answers/update/{{tmpAiAnswerId}}', { auth: 'admin', body: { answerText: 'إجابة محدّثة' } }),
+    apiRef('DELETE /ai-answers/delete/{id} (admin)', 'DELETE', '/api/v1/ai-answers/delete/{{tmpAiAnswerId}}', { auth: 'admin' }),
+    apiRef('POST /ai-answers/gift-plans/{giftPlanId}', 'POST', '/api/v1/ai-answers/gift-plans/' + G, { body: '{{aiAnswersBody}}' }),
+    apiRef('GET /ai-answers/gift-plans/{giftPlanId}', 'GET', '/api/v1/ai-answers/gift-plans/' + G)
+  ]),
+  folder('Gift Recommendations', '5 endpoints', [
+    apiRef('GET /gift-recommendations/gift-plans/{id}', 'GET', '/api/v1/gift-recommendations/gift-plans/' + G),
+    apiRef('GET /gift-recommendations/gift-plans/{id}/regenerate', 'GET', '/api/v1/gift-recommendations/gift-plans/' + G + '/regenerate'),
+    apiRef('GET /gift-recommendations/gift-plans/{id}/selected', 'GET', '/api/v1/gift-recommendations/gift-plans/' + G + '/selected'),
+    apiRef('PUT /gift-recommendations/{id}/select', 'PUT', '/api/v1/gift-recommendations/{{recommendationId}}/select'),
+    apiRef('PUT /gift-recommendations/{id}/unselect', 'PUT', '/api/v1/gift-recommendations/{{recommendationId}}/unselect')
+  ]),
+  folder('Product Search & Selection', '4 endpoints', [
+    apiRef('GET /search/gift-plans/{id}/products', 'GET', '/api/v1/search/gift-plans/' + G + '/products'),
+    apiRef('POST /selected-products/select-product/{id}', 'POST', '/api/v1/selected-products/select-product/{{productId}}'),
+    apiRef('GET /selected-products/get-selected-product/{giftPlanId}', 'GET', '/api/v1/selected-products/get-selected-product/' + G),
+    apiRef('DELETE /selected-products/clear-selected-product/{giftPlanId}', 'DELETE', '/api/v1/selected-products/clear-selected-product/' + G)
+  ]),
+  folder('Gift Messages', '6 endpoints', [
+    apiRef('POST /gift-messages/generate', 'POST', '/api/v1/gift-messages/generate', { body: { recipientName: 'عمار', relationship: 'أخ', occasion: 'تخرّج', giftName: 'ساعة', tone: 'دافئ', language: 'ar', dialect: 'سعودي' } }),
+    apiRef('POST /gift-messages/generate-from-plan/{id}', 'POST', '/api/v1/gift-messages/generate-from-plan/' + G, { body: { tone: 'دافئ', language: 'ar' } }),
+    apiRef('POST /gift-messages/manual', 'POST', '/api/v1/gift-messages/manual', { body: { messageText: 'مبروك يا عمار!' } }),
+    apiRef('GET /gift-messages/my', 'GET', '/api/v1/gift-messages/my'),
+    apiRef('GET /gift-messages/{id}', 'GET', '/api/v1/gift-messages/{{giftMessageId}}'),
+    apiRef('PUT /gift-messages/{id}', 'PUT', '/api/v1/gift-messages/{{giftMessageId}}', { body: { messageText: 'رسالة محدّثة', tone: 'دافئ', language: 'ar' } })
+  ]),
+  folder('Gift Cards', '10 endpoints', [
+    apiRef('POST /gift-cards', 'POST', '/api/v1/gift-cards', { body: { giftMessageId: '{{giftMessageId}}', recipientName: 'عمار', senderName: 'سعود', cardSize: 'MEDIUM', linkType: 'VIDEO', linkUrl: 'https://example.com', sentToEmail: 'swwdswwd124@gmail.com' } }),
+    apiRef('GET /gift-cards/my', 'GET', '/api/v1/gift-cards/my'),
+    apiRef('GET /gift-cards/{id}', 'GET', '/api/v1/gift-cards/{{giftCardId}}'),
+    apiRef('PUT /gift-cards/{id}', 'PUT', '/api/v1/gift-cards/{{giftCardId}}', { body: { cardSize: 'LARGE', recipientName: 'عمار', senderName: 'سعود' } }),
+    apiRef('POST /gift-cards/{id}/regenerate', 'POST', '/api/v1/gift-cards/{{giftCardId}}/regenerate'),
+    apiRef('GET /gift-cards/{id}/image', 'GET', '/api/v1/gift-cards/{{giftCardId}}/image'),
+    apiRef('GET /gift-cards/{id}/download?format=pdf', 'GET', '/api/v1/gift-cards/{{giftCardId}}/download?format=pdf'),
+    apiRef('GET /gift-cards/{id}/download?format=png', 'GET', '/api/v1/gift-cards/{{giftCardId}}/download?format=png'),
+    apiRef('POST /gift-cards/{id}/send-email', 'POST', '/api/v1/gift-cards/{{giftCardId}}/send-email', { body: { email: 'swwdswwd124@gmail.com' } }),
+    apiRef('DELETE /gift-cards/{id}', 'DELETE', '/api/v1/gift-cards/{{giftCardId}}')
+  ]),
+  folder('Gift History', '7 endpoints', [
+    apiRef('POST /gift-history/from-product/{id}', 'POST', '/api/v1/gift-history/from-product/{{selectedProductId}}', { body: { wasGifted: true, userRating: 5, notes: 'ممتاز' } }),
+    apiRef('PUT /gift-history/from-product/{id}', 'PUT', '/api/v1/gift-history/from-product/{{selectedProductId}}', { body: { wasGifted: true, userRating: 4, notes: 'جيد' } }),
+    apiRef('GET /gift-history/from-product/{id}', 'GET', '/api/v1/gift-history/from-product/{{selectedProductId}}'),
+    apiRef('DELETE /gift-history/from-product/{id}', 'DELETE', '/api/v1/gift-history/from-product/{{selectedProductId}}'),
+    apiRef('GET /gift-history/my', 'GET', '/api/v1/gift-history/my'),
+    apiRef('GET /gift-history/summary', 'GET', '/api/v1/gift-history/summary'),
+    apiRef('GET /gift-history/spending-stats', 'GET', '/api/v1/gift-history/spending-stats?from=2026-01-01&to=2026-12-31')
+  ]),
+  folder('Gift Quality Checks', '3 endpoints', [
+    apiRef('POST /gift-quality-checks/add/{recipientId}', 'POST', '/api/v1/gift-quality-checks/add/' + R, { body: { giftName: 'ساعة', giftDescription: 'ساعة ذكية', price: 499, occasionType: 'GRADUATION' } }),
+    apiRef('GET /gift-quality-checks/recipients/{recipientId}', 'GET', '/api/v1/gift-quality-checks/recipients/' + R),
+    apiRef('GET /gift-quality-checks/{checkId}', 'GET', '/api/v1/gift-quality-checks/{{qualityCheckId}}')
+  ]),
+  folder('Reminders', '5 endpoints', [
+    apiRef('POST /reminders/add/{recipientId}', 'POST', '/api/v1/reminders/add/' + R, { body: { reminderDate: '{{reminderDate}}', message: 'تذكير', status: 'PENDING' } }),
+    apiRef('GET /reminders/get', 'GET', '/api/v1/reminders/get'),
+    apiRef('GET /reminders/get-my', 'GET', '/api/v1/reminders/get-my'),
+    apiRef('PUT /reminders/update/{id}', 'PUT', '/api/v1/reminders/update/{{reminderId}}', { body: { reminderDate: '{{reminderDate}}', message: 'تذكير محدّث', status: 'PENDING' } }),
+    apiRef('DELETE /reminders/delete/{id}', 'DELETE', '/api/v1/reminders/delete/{{reminderId}}')
+  ]),
+  folder('Notifications', '5 endpoints', [
+    apiRef('POST /notifications', 'POST', '/api/v1/notifications', { body: { title: 'إشعار', message: 'رسالة', type: 'RECOMMENDATIONS_READY', status: 'UNREAD' } }),
+    apiRef('GET /notifications/my', 'GET', '/api/v1/notifications/my'),
+    apiRef('GET /notifications/{id}', 'GET', '/api/v1/notifications/{{notificationId}}'),
+    apiRef('PUT /notifications/{id}', 'PUT', '/api/v1/notifications/{{notificationId}}', { body: { status: 'READ' } }),
+    apiRef('DELETE /notifications/{id}', 'DELETE', '/api/v1/notifications/{{notificationId}}')
+  ]),
+  folder('Group Gifts', '11 endpoints', [
+    apiRef('POST /group-gifts', 'POST', '/api/v1/group-gifts', { body: { recipientId: '{{recipientId}}', title: 'هدية جماعية', description: 'وصف', responsiblePersonName: 'سعود', responsiblePersonEmail: 'swwdswwd124@gmail.com', giftGivingDate: '{{giftGivingDate}}', votingDeadline: '{{votingDeadline}}' } }),
+    apiRef('GET /group-gifts/my', 'GET', '/api/v1/group-gifts/my'),
+    apiRef('GET /group-gifts/{id}', 'GET', '/api/v1/group-gifts/{{groupGiftId}}'),
+    apiRef('PUT /group-gifts/{id}', 'PUT', '/api/v1/group-gifts/{{groupGiftId}}', { body: { title: 'هدية محدّثة', description: 'وصف', responsiblePersonName: 'سعود', responsiblePersonEmail: 'swwdswwd124@gmail.com' } }),
+    apiRef('DELETE /group-gifts/{id}', 'DELETE', '/api/v1/group-gifts/{{groupGiftId}}'),
+    apiRef('POST /group-gifts/add-option/{id}', 'POST', '/api/v1/group-gifts/add-option/{{groupGiftId}}', { body: { giftName: 'ساعة', description: 'وصف', priceBand: '500 SAR', reason: 'مناسبة' } }),
+    apiRef('POST /group-gifts/ai-generate-option/{id}', 'POST', '/api/v1/group-gifts/ai-generate-option/{{groupGiftId}}'),
+    apiRef('GET /group-gifts/get-options/{id}', 'GET', '/api/v1/group-gifts/get-options/{{groupGiftId}}'),
+    apiRef('POST /group-gifts/send-invite/{id}', 'POST', '/api/v1/group-gifts/send-invite/{{groupGiftId}}', { body: [{ inviteeName: 'ضيف', inviteeEmail: 'swwdswwd124@gmail.com' }] }),
+    apiRef('PUT /group-gifts/close-voting/{id}', 'PUT', '/api/v1/group-gifts/close-voting/{{groupGiftId}}'),
+    apiRef('GET /group-gifts/results/{id}', 'GET', '/api/v1/group-gifts/results/{{groupGiftId}}')
+  ]),
+  folder('Public Group Gifts', '2 endpoints (no auth)', [
+    apiRef('GET /public/group-gifts/vote/{token}', 'GET', '/api/v1/public/group-gifts/vote/{{inviteToken}}', { auth: 'none' }),
+    apiRef('POST /public/group-gifts/vote/{token}', 'POST', '/api/v1/public/group-gifts/vote/{{inviteToken}}', { auth: 'none', body: { groupGiftOptionId: '{{groupGiftOptionId}}' } })
+  ]),
+  folder('Payments & Premium', '5 endpoints', [
+    apiRef('POST /payments/premium', 'POST', '/api/v1/payments/premium', { body: { name: 'Saud', number: '4111111111111111', cvc: '123', month: '12', year: '30', callbackUrl: 'https://example.com/callback' } }),
+    apiRef('GET /payments/my', 'GET', '/api/v1/payments/my'),
+    apiRef('GET /premium/status', 'GET', '/api/v1/premium/status'),
+    apiRef('POST /payments/webhook/moyasar (public)', 'POST', '/api/v1/payments/webhook/moyasar', { auth: 'none', body: { id: '{{moyasarId}}' } }),
+    apiRef('GET /payments/moyasar-status/{id} (public)', 'GET', '/api/v1/payments/moyasar-status/{{moyasarId}}', { auth: 'none' })
+  ]),
+  folder('QR Code', '1 endpoint', [
+    apiRef('POST /qr-code/generate', 'POST', '/api/v1/qr-code/generate', { body: { url: 'https://example.com' } })
+  ]),
+  folder('Auth', '1 endpoint', [
+    apiRef('POST /auth/logout', 'POST', '/api/v1/auth/logout')
+  ])
+];
+
+folders.push(folder(
+  'API Reference — All Endpoints',
+  'Complete catalog: one request per route in the codebase (104 endpoints across 20 controllers). Run the main flow folders first so {{recipientId}}, {{giftPlanId}}, etc. are populated. ADMIN routes use {{adminUsername}}/{{adminPassword}}. Tests are tolerant.',
+  apiRefSubs
 ));
 
 // ============================ COLLECTION ============================
@@ -735,7 +946,8 @@ const collection = {
     { key: 'tmpRqAnswerId', value: '' },
     { key: 'tmpAiQuestionId', value: '' },
     { key: 'tmpAiAnswerId', value: '' },
-    { key: 'tmpGiftPlanId', value: '' }
+    { key: 'tmpGiftPlanId', value: '' },
+    { key: 'tmpRecipientId', value: '' }
   ]
 };
 

@@ -15,6 +15,14 @@ premium features.
 
 ---
 
+## Live API (AWS)
+
+```
+http://tahadaw-alb-278802991.eu-central-1.elb.amazonaws.com/api/v1
+```
+
+---
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -70,6 +78,8 @@ Main feature areas:
 | Scheduling | Spring `@Scheduled` (reminder jobs) |
 | Boilerplate | Lombok |
 | Build | Maven (`mvnw` wrapper) |
+| Containerization | Docker |
+| Deployment / Cloud | AWS |
 | Testing | Spring Boot Test, Spring Security Test, JPA Test |
 
 ---
