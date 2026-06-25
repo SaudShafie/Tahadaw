@@ -328,7 +328,7 @@ Errors are returned with HTTP 4xx/5xx and a message body (`spring.web.error.incl
 
 ## Postman API Documentation
 
-**[Tahadaw — Full System Flows (Postman API Docs)]([https://documenter.getpostman.com/view/54223024/2sBXwwooJF])**
+**[Tahadaw — Full System Flows (Postman API Docs)](https://documenter.getpostman.com/view/54223024/2sBXwwooJF)**
 
 **Import the collection locally:**
 
